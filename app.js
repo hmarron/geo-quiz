@@ -9,6 +9,7 @@ let height = container.clientHeight;
 
 let score = 0;
 let wrongCount = 0;
+let hintCount = 0;
 let pool = [];
 let startTime = null;
 let timerInterval = null;
@@ -206,15 +207,107 @@ function stopTimer() {
     timerInterval = null;
 }
 
+// ─── High Scores ────────────────────────────────────────────────────────────
+
+const SCORES_KEY = 'geo-quiz-scores';
+
+function saveScore(elapsed) {
+    const entry = {
+        score,
+        wrong: wrongCount,
+        hints: hintCount,
+        time: elapsed,
+        date: new Date().toISOString(),
+        settings: {
+            mode: gameMode,
+            regions: regions.filter(r => r.active).map(r => r.id)
+        }
+    };
+    const scores = loadScores();
+    scores.push(entry);
+    scores.sort((a, b) => {
+        const accA = (a.score + a.wrong) > 0 ? a.score / (a.score + a.wrong) : 0;
+        const accB = (b.score + b.wrong) > 0 ? b.score / (b.score + b.wrong) : 0;
+        if (accB !== accA) return accB - accA;
+        return a.time - b.time;
+    });
+    try { localStorage.setItem(SCORES_KEY, JSON.stringify(scores.slice(0, 20))); } catch (e) {}
+}
+
+function loadScores() {
+    try { return JSON.parse(localStorage.getItem(SCORES_KEY)) || []; } catch { return []; }
+}
+
+function showFinishThenScores() {
+    document.getElementById('finish-modal').style.display = 'none';
+    toggleScores();
+}
+
+function toggleScores() {
+    const modal = document.getElementById('scores-modal');
+    if (modal.style.display === 'flex') {
+        modal.style.display = 'none';
+        return;
+    }
+    const scores = loadScores();
+    const list = document.getElementById('scores-list');
+    if (scores.length === 0) {
+        list.innerHTML = '<p class="text-slate-500 text-sm text-center py-6">No scores yet — play a game!</p>';
+    } else {
+        list.innerHTML = scores.map((s, i) => {
+            const accuracy = (s.score + s.wrong) > 0 ? Math.round(s.score / (s.score + s.wrong) * 100) : 0;
+            const regionLabels = s.settings.regions.map(id => regions.find(r => r.id === id)?.label ?? id).join(', ');
+            const date = new Date(s.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+            return `
+                <div class="flex items-start gap-3 p-3 bg-slate-700/30 rounded-xl">
+                    <span class="text-slate-600 font-mono text-sm pt-0.5 w-5 shrink-0 text-right">${i + 1}</span>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex flex-wrap gap-x-3 text-sm font-mono">
+                            <span class="text-green-400 font-bold">${s.score}✓</span>
+                            <span class="text-red-400 font-bold">${s.wrong}✗</span>
+                            <span class="text-blue-400">${formatTime(s.time)}</span>
+                            <span class="text-slate-400">${accuracy}%</span>
+                            ${s.hints > 0 ? `<span class="text-amber-500">${s.hints} hint${s.hints !== 1 ? 's' : ''}</span>` : ''}
+                        </div>
+                        <div class="text-xs text-slate-500 mt-0.5 truncate">${s.settings.mode === 'hard' ? 'Hard' : 'Easy'} · ${regionLabels} · ${date}</div>
+                    </div>
+                </div>`;
+        }).join('');
+    }
+    modal.style.display = 'flex';
+}
+
+// ─── Finish Modal ────────────────────────────────────────────────────────────
+
 function showFinishModal() {
     stopTimer();
     const elapsed = startTime ? Date.now() - startTime : 0;
+    saveScore(elapsed);
     const total = score + wrongCount;
     const accuracy = total > 0 ? Math.round(score / total * 100) : 0;
     document.getElementById('final-score').textContent = score;
     document.getElementById('final-wrong').textContent = wrongCount;
     document.getElementById('final-time').textContent = formatTime(elapsed);
-    document.getElementById('final-accuracy').textContent = `${accuracy}% accuracy`;
+    document.getElementById('final-accuracy').textContent = `${accuracy}% accuracy · ${hintCount} hint${hintCount !== 1 ? 's' : ''}`;
+
+    // Find best previous score with the same settings
+    const activeRegions = regions.filter(r => r.active).map(r => r.id).sort().join(',');
+    const allScores = loadScores();
+    const sameSettings = allScores.filter(s => {
+        return s.settings.mode === gameMode &&
+               s.settings.regions.slice().sort().join(',') === activeRegions;
+    });
+    // sameSettings includes the score we just saved; best is index 0 (sorted by accuracy desc, time asc)
+    const best = sameSettings[0];
+    const bestEl = document.getElementById('final-best');
+    if (best && (best.score + best.wrong) > 0) {
+        const bestAcc = Math.round(best.score / (best.score + best.wrong) * 100);
+        bestEl.textContent = `Best: ${bestAcc}% · ${formatTime(best.time)}`;
+        bestEl.classList.remove('hidden');
+    } else {
+        bestEl.classList.add('hidden');
+    }
+
     document.getElementById('finish-modal').style.display = 'flex';
 }
 
@@ -325,6 +418,7 @@ function checkTypedAnswer() {
 
 function showHint() {
     if (!canAnswer) return;
+    hintCount++;
     inputArea.classList.add('hidden');
     optionsGrid.classList.remove('hidden');
     generateChoices();
@@ -355,6 +449,7 @@ function handleWrong() {
 function resetGame() {
     score = 0;
     wrongCount = 0;
+    hintCount = 0;
     startTime = null;
     stopTimer();
     document.getElementById('score').innerText = 0;

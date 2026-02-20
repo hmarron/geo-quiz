@@ -36,7 +36,10 @@
                     <span class="absolute top-1/2 -translate-y-1/2 right-4 text-xs bg-slate-700 text-slate-400 px-2 py-0.5 rounded-full">Soon</span>
                 </div>
             </div>
-            <button id="start-install-btn" onclick="installApp()" class="hidden text-xs text-slate-600 hover:text-slate-400 transition-colors mt-2">
+            <button onclick="toggleScores()" class="text-sm text-slate-500 hover:text-slate-300 transition-colors">
+                High Scores
+            </button>
+            <button id="start-install-btn" onclick="installApp()" class="hidden text-xs text-slate-600 hover:text-slate-400 transition-colors">
                 + Install App
             </button>
         </div>
@@ -46,6 +49,17 @@
         <div class="flex flex-col items-center gap-4">
             <div class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
             <p class="text-blue-400 font-medium">Loading Geography Quiz...</p>
+        </div>
+    </div>
+
+    <!-- Scores Modal -->
+    <div id="scores-modal" class="scores-modal p-4">
+        <div class="bg-slate-800 border border-slate-700 w-full max-w-lg rounded-2xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-white">High Scores</h2>
+                <button onclick="toggleScores()" class="text-slate-400 hover:text-white">✕</button>
+            </div>
+            <div id="scores-list" class="flex flex-col gap-2"></div>
         </div>
     </div>
 
@@ -68,8 +82,13 @@
                     <div class="text-xs text-slate-400 uppercase tracking-wide mt-1">Time</div>
                 </div>
             </div>
-            <div class="text-sm text-slate-400 mb-6" id="final-accuracy"></div>
+            <div class="text-sm text-slate-400 mt-1" id="final-accuracy"></div>
+            <div class="text-xs text-amber-400 mt-1 mb-6" id="final-best"></div>
             <button onclick="resetGame()" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-bold transition-colors">Play Again</button>
+            <div class="grid grid-cols-2 gap-3 mt-3">
+                <button onclick="goHome()" class="bg-slate-700 hover:bg-slate-600 text-white py-3 rounded-xl font-bold transition-colors">Home</button>
+                <button onclick="showFinishThenScores()" class="bg-slate-700 hover:bg-slate-600 text-white py-3 rounded-xl font-bold transition-colors">High Scores</button>
+            </div>
         </div>
     </div>
 
@@ -114,7 +133,6 @@
     <!-- Header UI -->
     <div class="w-full max-w-5xl flex items-center justify-between gap-2 mb-1">
         <div class="flex items-center gap-2">
-            <h1 class="text-sm font-bold text-blue-400 hidden sm:block">Geography Challenge</h1>
             <span class="text-xs font-mono text-slate-400"><span id="score" class="font-bold text-green-400">0</span>✓ <span id="wrong-count" class="font-bold text-red-400">0</span>✗ <span id="timer" class="text-slate-500 mx-1">0:00</span> <span id="remaining" class="font-bold text-blue-400">0</span> left</span>
         </div>
         <div class="flex items-center gap-1">

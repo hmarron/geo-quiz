@@ -88,7 +88,7 @@ button {
     align-items: center;
     justify-content: center;
 }
-.settings-modal, .finish-modal {
+.settings-modal, .finish-modal, .scores-modal {
     display: none;
     position: fixed;
     inset: 0;
@@ -96,6 +96,9 @@ button {
     z-index: 200;
     align-items: center;
     justify-content: center;
+}
+.scores-modal {
+    z-index: 400;
 }
 .mode-btn-active {
     background-color: #2563eb !important;
