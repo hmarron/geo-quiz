@@ -11,6 +11,13 @@
             background-color: #0f172a;
             color: #f8fafc;
             overflow: hidden;
+            height: 100dvh;
+        }
+        button {
+            touch-action: manipulation;
+        }
+        #map-container svg {
+            touch-action: none;
         }
         #map-container {
             background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
@@ -97,7 +104,7 @@
         }
     </style>
 </head>
-<body class="flex flex-col items-center justify-center h-screen p-4">
+<body class="flex flex-col items-center p-2 sm:p-4">
 
     <div id="loader">
         <div class="flex flex-col items-center gap-4">
@@ -145,43 +152,23 @@
     </div>
 
     <!-- Header UI -->
-    <div class="w-full max-w-5xl flex flex-col items-center gap-4 mb-4">
-        <div class="w-full flex justify-between items-end">
-            <div class="flex flex-col">
-                <h1 class="text-2xl font-bold text-blue-400">Geography Challenge</h1>
-                <p id="active-regions-label" class="text-slate-400 text-xs">Americas, Europe, Asia, Africa (North)</p>
-            </div>
-            <button onclick="toggleSettings()" class="bg-slate-800 hover:bg-slate-700 p-2 rounded-lg border border-slate-700 text-slate-300 transition-colors flex items-center gap-2 text-sm">
-                ⚙️ Settings
-            </button>
+    <div class="w-full max-w-5xl flex items-center justify-between gap-2 mb-1">
+        <div class="flex items-center gap-2">
+            <h1 class="text-sm font-bold text-blue-400 hidden sm:block">Geography Challenge</h1>
+            <span class="text-xs font-mono text-slate-400"><span id="score" class="font-bold text-green-400">0</span>✓ <span id="wrong-count" class="font-bold text-red-400">0</span>✗ <span id="remaining" class="font-bold text-blue-400">0</span> left</span>
         </div>
-
-        <div class="w-full grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-800/50 p-6 rounded-2xl border border-slate-700 backdrop-blur-md">
-            <div class="flex flex-col justify-center">
-                <span class="text-xs uppercase tracking-widest text-slate-500 font-semibold mb-1">What is this country?</span>
-                <div id="feedback" class="h-6 text-sm font-medium text-slate-400">Type your answer...</div>
-            </div>
-            
-            <div class="md:col-span-1 flex justify-center items-center gap-8">
-                <div>
-                    <span class="block text-xs uppercase text-slate-500">Score</span>
-                    <span id="score" class="text-2xl font-mono font-bold text-green-400">0</span>
-                </div>
-                <div>
-                    <span class="block text-xs uppercase text-slate-500">Remaining</span>
-                    <span id="remaining" class="text-2xl font-mono font-bold text-blue-400">0</span>
-                </div>
-            </div>
-
-            <div class="flex justify-end items-center gap-2">
-                <button onclick="showHint()" id="hint-btn" class="text-xs bg-amber-600/20 text-amber-400 border border-amber-600/40 hover:bg-amber-600/40 px-3 py-2 rounded-lg font-bold transition-all">Hint</button>
-                <button onclick="resetGame()" class="text-xs bg-slate-700 hover:bg-slate-600 px-3 py-2 rounded-lg font-bold transition-all active:scale-95">Reset</button>
-            </div>
+        <div class="flex items-center gap-1">
+            <button onclick="resetGame()" class="text-xs bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded-lg font-bold transition-all">↺</button>
+            <button onclick="toggleSettings()" class="text-xs bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded-lg border border-slate-600 text-slate-300 transition-colors">⚙️</button>
         </div>
     </div>
+    <p id="active-regions-label" class="hidden text-slate-400 text-xs"></p>
 
     <!-- Map Canvas -->
-    <div id="map-container" class="relative w-full max-w-5xl h-[45vh] border border-slate-700 shadow-2xl overflow-hidden">
+    <div id="map-container" class="relative w-full max-w-5xl flex-1 min-h-0 border border-slate-700 shadow-2xl overflow-hidden">
+        <div id="country-overlay" class="absolute inset-0 flex items-center justify-center pointer-events-none z-10 hidden">
+            <div id="country-name-display" class="text-3xl sm:text-4xl font-bold px-6 py-3 rounded-xl bg-black/50 backdrop-blur-sm"></div>
+        </div>
         <div class="zoom-controls">
             <button class="btn-zoom" onclick="zoomIn()">+</button>
             <button class="btn-zoom" onclick="zoomOut()">-</button>
@@ -190,11 +177,12 @@
     </div>
 
     <!-- Interaction Area -->
-    <div class="w-full max-w-5xl mt-4">
+    <div class="w-full max-w-5xl mt-1">
         <div id="input-area" class="w-full relative">
-            <input type="text" id="answer-input" placeholder="Type country name and press Enter..." 
-                   class="w-full bg-slate-800 border-2 border-slate-700 focus:border-blue-500 rounded-xl p-4 text-xl font-bold text-white outline-none transition-all"
-                   autocomplete="off">
+            <input type="text" id="answer-input" placeholder=""
+                   class="w-full bg-slate-800 border-2 border-slate-700 focus:border-blue-500 rounded-xl px-3 py-2 pr-16 text-sm sm:text-base font-bold text-white outline-none transition-all"
+                   autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
+            <button onclick="showHint()" id="hint-btn" class="absolute right-2 top-1/2 -translate-y-1/2 text-xs bg-amber-600/20 text-amber-400 border border-amber-600/40 hover:bg-amber-600/40 px-2 py-1 rounded-lg font-bold transition-all">Hint</button>
         </div>
         
         <!-- Options Container (hidden by default, shown on hint or in Easy Mode) -->
@@ -208,19 +196,19 @@
         const optionsGrid = document.getElementById('options-grid');
         const inputArea = document.getElementById('input-area');
         const answerInput = document.getElementById('answer-input');
-        const feedback = document.getElementById('feedback');
         const settingsModal = document.getElementById('settings-modal');
-        
+
         let width = container.clientWidth;
         let height = container.clientHeight;
 
         let score = 0;
+        let wrongCount = 0;
         let pool = [];
         let fullDataset = [];
         let currentTarget = null;
         let canAnswer = false;
         let showBorders = true;
-        let gameMode = 'hard'; // 'hard' or 'easy'
+        let gameMode = (navigator.maxTouchPoints > 0) ? 'easy' : 'hard';
 
         // Colors
         const COLOR_ACTIVE_FILL = "#1e293b";
@@ -256,6 +244,7 @@
             .scaleExtent([1, 100])
             .on("zoom", (event) => {
                 g.attr("transform", event.transform);
+                g.selectAll(".country").style("stroke-width", 0.5 / event.transform.k + "px");
             });
 
         svg.call(zoom);
@@ -385,10 +374,17 @@
             document.getElementById('active-regions-label').innerText = activeNames.length > 0 ? activeNames.join(', ') : 'None selected';
         }
 
+        function showOverlay(name, isCorrect) {
+            const overlay = document.getElementById('country-overlay');
+            const nameDisplay = document.getElementById('country-name-display');
+            nameDisplay.textContent = name;
+            nameDisplay.className = `text-3xl sm:text-4xl font-bold px-6 py-3 rounded-xl bg-black/50 backdrop-blur-sm ${isCorrect ? 'text-green-400' : 'text-red-400'}`;
+            overlay.classList.remove('hidden');
+            setTimeout(() => overlay.classList.add('hidden'), 1200);
+        }
+
         function nextQuestion() {
             if (pool.length === 0) {
-                feedback.innerText = "🏆 Victory! All targeted countries identified.";
-                feedback.className = "h-6 text-sm font-bold text-yellow-400";
                 inputArea.classList.add('hidden');
                 optionsGrid.classList.remove('hidden');
                 optionsGrid.innerHTML = `<button onclick="resetGame()" class="col-span-full py-4 bg-blue-600 hover:bg-blue-500 rounded-xl font-bold transition-colors">Restart Quiz</button>`;
@@ -398,9 +394,7 @@
             }
 
             canAnswer = true;
-            feedback.innerText = gameMode === 'hard' ? "Type your answer..." : "Pick the correct option!";
-            feedback.className = "h-6 text-sm font-medium text-slate-400";
-            
+
             if (gameMode === 'hard') {
                 answerInput.value = '';
                 answerInput.focus();
@@ -447,17 +441,12 @@
             optionsGrid.innerHTML = '';
             options.forEach(opt => {
                 const btn = document.createElement('button');
-                btn.className = "btn-option p-4 rounded-xl font-semibold text-sm shadow-lg text-white";
+                btn.className = "btn-option p-3 rounded-xl font-semibold text-sm shadow-lg text-white";
                 btn.innerText = opt;
                 btn.onclick = () => {
                     if (!canAnswer) return;
                     if (opt === targetName) handleCorrect();
-                    else {
-                        btn.classList.add('wrong');
-                        setTimeout(() => btn.classList.remove('wrong'), 600);
-                        feedback.innerText = "Try again!";
-                        feedback.className = "h-6 text-sm font-medium text-red-400";
-                    }
+                    else handleWrong();
                 };
                 optionsGrid.appendChild(btn);
             });
@@ -468,7 +457,7 @@
             const guess = normalizeString(answerInput.value);
             const actual = normalizeString(getCountryName(currentTarget));
             if (guess.length < 2) return;
-            if (guess === actual || actual.includes(guess) && guess.length > 3) {
+            if (guess === actual || (actual.includes(guess) && guess.length > 3)) {
                 handleCorrect();
                 return;
             }
@@ -476,12 +465,8 @@
             const threshold = actual.length < 5 ? 1 : 2;
             if (distance <= threshold) {
                 handleCorrect();
-            } else if (distance <= threshold + 1) {
-                feedback.innerText = "So close! Check your spelling.";
-                feedback.className = "h-6 text-sm font-medium text-amber-400";
             } else {
-                feedback.innerText = "Try again! (Need a hint?)";
-                feedback.className = "h-6 text-sm font-medium text-red-400";
+                handleWrong();
             }
         }
 
@@ -497,25 +482,28 @@
             score++;
             document.getElementById('score').innerText = score;
             const targetName = getCountryName(currentTarget);
-            feedback.innerText = `✓ Correct! That is ${targetName}`;
-            feedback.className = "h-6 text-sm font-medium text-green-400";
+            showOverlay(targetName, true);
             pool = pool.filter(c => getCountryName(c) !== targetName);
             document.getElementById('remaining').innerText = pool.length;
-            
-            // If in Easy mode, highlight the correct button
-            if (gameMode === 'easy') {
-                const btns = optionsGrid.querySelectorAll('button');
-                btns.forEach(b => {
-                    if (b.innerText === targetName) b.classList.add('correct');
-                });
-            }
-
             setTimeout(nextQuestion, 1200);
+        }
+
+        function handleWrong() {
+            canAnswer = false;
+            wrongCount++;
+            document.getElementById('wrong-count').innerText = wrongCount;
+            const targetName = getCountryName(currentTarget);
+            showOverlay(targetName, false);
+            pool = pool.filter(c => getCountryName(c) !== targetName);
+            document.getElementById('remaining').innerText = pool.length;
+            setTimeout(nextQuestion, 1400);
         }
 
         function resetGame() {
             score = 0;
+            wrongCount = 0;
             document.getElementById('score').innerText = 0;
+            document.getElementById('wrong-count').innerText = 0;
             pool = fullDataset.filter(isAllowed);
             document.getElementById('remaining').innerText = pool.length;
             nextQuestion();
@@ -529,6 +517,17 @@
             height = container.clientHeight;
             svg.attr("viewBox", `0 0 ${width} ${height}`);
         });
+
+        // Shrink layout to fit the visible area when the virtual keyboard opens
+        function syncViewportHeight() {
+            document.body.style.height = (window.visualViewport?.height ?? window.innerHeight) + 'px';
+        }
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', syncViewportHeight);
+            syncViewportHeight();
+        }
+
+        setMode(gameMode);
         init();
     </script>
 </body>
