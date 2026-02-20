@@ -191,7 +191,7 @@ function showOverlay(name, isCorrect) {
     nameDisplay.textContent = name;
     nameDisplay.className = `text-3xl sm:text-4xl font-bold px-6 py-3 rounded-xl bg-black/50 backdrop-blur-sm ${isCorrect ? 'text-green-400' : 'text-red-400'}`;
     overlay.classList.remove('hidden');
-    setTimeout(() => overlay.classList.add('hidden'), 1200);
+    setTimeout(() => overlay.classList.add('hidden'), 600);
 }
 
 function nextQuestion() {
@@ -234,7 +234,7 @@ function nextQuestion() {
             const maxDim = Math.max(dx / width, dy / height, 0.001);
             const scale = Math.max(1.8, Math.min(35, 0.42 / maxDim));
             const translate = [width / 2 - scale * x, height / 2 - scale * y];
-            svg.transition().duration(850).call(zoom.transform, d3.zoomIdentity.translate(translate[0], translate[1]).scale(scale));
+            svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity.translate(translate[0], translate[1]).scale(scale));
         }
     } catch (e) {}
 }
@@ -304,7 +304,7 @@ function handleCorrect() {
     showOverlay(targetName, true);
     pool = pool.filter(c => getCountryName(c) !== targetName);
     document.getElementById('remaining').innerText = pool.length;
-    setTimeout(nextQuestion, 1200);
+    setTimeout(nextQuestion, 700);
 }
 
 function handleWrong() {
@@ -315,7 +315,7 @@ function handleWrong() {
     showOverlay(targetName, false);
     pool = pool.filter(c => getCountryName(c) !== targetName);
     document.getElementById('remaining').innerText = pool.length;
-    setTimeout(nextQuestion, 1400);
+    setTimeout(nextQuestion, 800);
 }
 
 function resetGame() {
