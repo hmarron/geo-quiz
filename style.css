@@ -79,6 +79,15 @@ button {
     background: #0f172a;
     z-index: 100;
 }
+.start-screen {
+    display: flex;
+    position: fixed;
+    inset: 0;
+    background: #0f172a;
+    z-index: 300;
+    align-items: center;
+    justify-content: center;
+}
 .settings-modal, .finish-modal {
     display: none;
     position: fixed;

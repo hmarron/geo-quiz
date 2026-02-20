@@ -17,6 +17,31 @@
 </head>
 <body class="flex flex-col items-center p-2 sm:p-4">
 
+    <!-- Start Screen -->
+    <div id="start-screen" class="start-screen">
+        <div class="flex flex-col items-center gap-6 w-full max-w-xs px-6">
+            <div class="text-6xl">🌍</div>
+            <div class="text-center">
+                <h1 class="text-3xl font-bold text-white">Geography Challenge</h1>
+                <p class="text-slate-400 mt-1 text-sm">Test your world geography knowledge</p>
+            </div>
+            <div class="w-full flex flex-col gap-3">
+                <button onclick="startSinglePlayer()" class="w-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white py-4 rounded-xl font-bold text-lg transition-colors">
+                    Single Player
+                </button>
+                <div class="relative">
+                    <button disabled class="w-full bg-slate-800 text-slate-600 py-4 rounded-xl font-bold text-lg cursor-not-allowed border border-slate-700">
+                        Multiplayer
+                    </button>
+                    <span class="absolute top-1/2 -translate-y-1/2 right-4 text-xs bg-slate-700 text-slate-400 px-2 py-0.5 rounded-full">Soon</span>
+                </div>
+            </div>
+            <button id="start-install-btn" onclick="installApp()" class="hidden text-xs text-slate-600 hover:text-slate-400 transition-colors mt-2">
+                + Install App
+            </button>
+        </div>
+    </div>
+
     <div id="loader">
         <div class="flex flex-col items-center gap-4">
             <div class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
@@ -93,9 +118,9 @@
             <span class="text-xs font-mono text-slate-400"><span id="score" class="font-bold text-green-400">0</span>✓ <span id="wrong-count" class="font-bold text-red-400">0</span>✗ <span id="timer" class="text-slate-500 mx-1">0:00</span> <span id="remaining" class="font-bold text-blue-400">0</span> left</span>
         </div>
         <div class="flex items-center gap-1">
-            <button id="install-btn" onclick="installApp()" class="hidden text-xs bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded-lg font-bold transition-all">Install</button>
             <button onclick="resetGame()" class="text-xs bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded-lg font-bold transition-all">↺</button>
             <button onclick="toggleSettings()" class="text-xs bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded-lg border border-slate-600 text-slate-300 transition-colors">⚙️</button>
+            <button onclick="goHome()" class="text-xs bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded-lg border border-slate-600 text-slate-300 transition-colors">⌂</button>
         </div>
     </div>
     <p id="active-regions-label" class="hidden text-slate-400 text-xs"></p>

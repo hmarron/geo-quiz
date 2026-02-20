@@ -390,12 +390,12 @@ let installPromptEvent = null;
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     installPromptEvent = e;
-    document.getElementById('install-btn').classList.remove('hidden');
+    document.getElementById('start-install-btn').classList.remove('hidden');
 });
 
 window.addEventListener('appinstalled', () => {
     installPromptEvent = null;
-    document.getElementById('install-btn').classList.add('hidden');
+    document.getElementById('start-install-btn').classList.add('hidden');
 });
 
 function installApp() {
@@ -403,9 +403,23 @@ function installApp() {
     installPromptEvent.prompt();
     installPromptEvent.userChoice.then(() => {
         installPromptEvent = null;
-        document.getElementById('install-btn').classList.add('hidden');
+        document.getElementById('start-install-btn').classList.add('hidden');
     });
 }
 
+function startSinglePlayer() {
+    document.getElementById('start-screen').style.display = 'none';
+    if (fullDataset.length > 0) {
+        resetGame();
+    } else {
+        init();
+    }
+}
+
+function goHome() {
+    stopTimer();
+    document.getElementById('finish-modal').style.display = 'none';
+    document.getElementById('start-screen').style.display = 'flex';
+}
+
 setMode(gameMode);
-init();
