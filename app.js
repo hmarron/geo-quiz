@@ -112,7 +112,17 @@ function isAllowed(feature) {
     return r ? r.active : false;
 }
 
-async function init() {
+let dataReady = false;
+let dataLoading = false;
+
+async function init(andThen) {
+    if (dataReady) { if (andThen) andThen(); return; }
+    if (dataLoading) {
+        // Already in flight — poll until done then run callback
+        const wait = setInterval(() => { if (dataReady) { clearInterval(wait); if (andThen) andThen(); } }, 100);
+        return;
+    }
+    dataLoading = true;
     try {
         const response = await fetch('https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_countries.geojson');
         const data = await response.json();
@@ -120,7 +130,8 @@ async function init() {
 
         renderSettings();
         updateActiveLabel();
-        applySettings(false);
+        pool = fullDataset.filter(isAllowed);
+        document.getElementById('remaining').innerText = pool.length;
 
         g.selectAll("path")
             .data(fullDataset)
@@ -131,14 +142,16 @@ async function init() {
             .style("stroke", showBorders ? COLOR_BORDER : "none")
             .style("fill", d => isAllowed(d) ? COLOR_ACTIVE_FILL : COLOR_EXCLUDED_FILL);
 
-        document.getElementById('loader').style.display = 'none';
-        nextQuestion();
-
         answerInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') checkTypedAnswer();
         });
+
+        dataReady = true;
+        document.getElementById('loader').style.display = 'none';
+        if (andThen) andThen();
     } catch (err) {
         console.error("Error loading map:", err);
+        dataLoading = false;
     }
 }
 
@@ -510,11 +523,7 @@ function installApp() {
 
 function startSinglePlayer() {
     document.getElementById('start-screen').style.display = 'none';
-    if (fullDataset.length > 0) {
-        resetGame();
-    } else {
-        init();
-    }
+    init(() => resetGame());
 }
 
 function goHome() {
@@ -545,7 +554,10 @@ function mpGenCode() {
 }
 
 function startMultiplayer() {
-    document.getElementById('mp-lobby-modal').style.display = 'flex';
+    init(() => {
+        mpRenderLobbySettings();
+        document.getElementById('mp-lobby-modal').style.display = 'flex';
+    });
 }
 
 function showJoinInput() {
@@ -767,11 +779,15 @@ function mpApplySettings(msg) {
     mpMode = msg.mpMode;
     mpQuestionPool = msg.questionPool;
     mpQuestionIdx = 0;
-    // Apply regions
+    // Apply regions and re-render map
     regions.forEach(r => { r.active = msg.regions.includes(r.id); });
+    g.selectAll(".country")
+        .attr("class", d => isAllowed(d) ? "country" : "country country-excluded")
+        .style("fill", d => isAllowed(d) ? COLOR_ACTIVE_FILL : COLOR_EXCLUDED_FILL);
     gameMode = msg.gameMode;
     setMode(gameMode);
     pool = fullDataset.filter(isAllowed);
+    document.getElementById('remaining').innerText = pool.length;
     // Apply player list
     if (msg.players) {
         Object.entries(msg.players).forEach(([pid, name]) => {
@@ -792,11 +808,45 @@ function mpApplySettings(msg) {
     // Guests wait for first 'question' message
 }
 
+function mpSetGameMode(mode) {
+    gameMode = mode;
+    setMode(mode); // update single-player mode buttons too
+    document.getElementById('mp-btn-hard').classList.toggle('mode-btn-active', mode === 'hard');
+    document.getElementById('mp-btn-easy').classList.toggle('mode-btn-active', mode === 'easy');
+}
+
+function mpRenderLobbySettings() {
+    // Render region toggles into the lobby
+    const container = document.getElementById('mp-region-toggles');
+    container.innerHTML = regions.map(r => `
+        <label class="flex items-center gap-2 p-2 bg-slate-700/50 rounded-lg cursor-pointer hover:bg-slate-700 transition-colors">
+            <input type="checkbox" id="mp-check-${r.id}" ${r.active ? 'checked' : ''}
+                   class="w-4 h-4 rounded border-slate-600 bg-slate-800 text-blue-500 focus:ring-blue-500">
+            <span class="text-xs font-medium text-slate-200">${r.label}</span>
+        </label>
+    `).join('');
+    // Sync game mode buttons
+    document.getElementById('mp-btn-hard').classList.toggle('mode-btn-active', gameMode === 'hard');
+    document.getElementById('mp-btn-easy').classList.toggle('mode-btn-active', gameMode === 'easy');
+}
+
 function mpStartGame() {
     if (!mpIsHost) return;
     mpMode = document.getElementById('mp-mode-select').value;
 
-    // Build question pool from current region settings
+    // Read region settings from lobby checkboxes
+    regions.forEach(r => {
+        const cb = document.getElementById(`mp-check-${r.id}`);
+        if (cb) r.active = cb.checked;
+    });
+    // Update map display to match
+    g.selectAll(".country")
+        .attr("class", d => isAllowed(d) ? "country" : "country country-excluded")
+        .style("fill", d => isAllowed(d) ? COLOR_ACTIVE_FILL : COLOR_EXCLUDED_FILL);
+    pool = fullDataset.filter(isAllowed);
+    document.getElementById('remaining').innerText = pool.length;
+
+    // Build question pool
     const activePool = fullDataset.filter(isAllowed);
     const shuffled = activePool.slice().sort(() => Math.random() - 0.5);
     mpQuestionPool = shuffled.map(f => f.properties.ISO_A3).filter(Boolean);
@@ -1130,3 +1180,4 @@ function mpShowToast(text) {
 }
 
 setMode(gameMode);
+init(); // start loading data in the background immediately

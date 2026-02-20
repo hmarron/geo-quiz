@@ -130,7 +130,7 @@
 
     <!-- Multiplayer Lobby Modal -->
     <div id="mp-lobby-modal" class="mp-lobby-modal p-4">
-        <div class="bg-slate-800 border border-slate-700 w-full max-w-sm rounded-2xl p-6 shadow-2xl">
+        <div class="bg-slate-800 border border-slate-700 w-full max-w-sm rounded-2xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-5">
                 <h2 class="text-xl font-bold text-white">Multiplayer</h2>
                 <button onclick="closeLobby()" class="text-slate-400 hover:text-white">✕</button>
@@ -179,13 +179,25 @@
 
             <!-- Mode selector + Start (host only) -->
             <div id="mp-host-controls" class="hidden">
-                <div class="flex items-center gap-2 mb-3">
-                    <span class="text-xs text-slate-400">Mode:</span>
+                <div class="flex items-center gap-2 mb-4">
+                    <span class="text-xs text-slate-400 shrink-0">Mode:</span>
                     <select id="mp-mode-select" class="flex-1 bg-slate-700 border border-slate-600 text-white text-sm rounded-lg px-2 py-1.5 outline-none">
                         <option value="race">Race (first correct wins)</option>
                         <option value="compete">Compete (independent)</option>
                     </select>
                 </div>
+
+                <div class="border-t border-slate-700 pt-4 mb-4">
+                    <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Answer Style</p>
+                    <div class="grid grid-cols-2 gap-2 mb-4">
+                        <button id="mp-btn-hard" onclick="mpSetGameMode('hard')" class="py-1.5 rounded-lg text-xs font-bold bg-slate-700 border border-slate-600 text-white transition-all">Hard (Type)</button>
+                        <button id="mp-btn-easy" onclick="mpSetGameMode('easy')" class="py-1.5 rounded-lg text-xs font-bold bg-slate-700 border border-slate-600 text-white transition-all">Easy (Choices)</button>
+                    </div>
+
+                    <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Regions</p>
+                    <div id="mp-region-toggles" class="flex flex-col gap-1.5"></div>
+                </div>
+
                 <button onclick="mpStartGame()" id="btn-mp-start" class="w-full bg-green-600 hover:bg-green-500 text-white py-2.5 rounded-xl font-bold transition-colors">Start Game</button>
             </div>
 
