@@ -177,9 +177,26 @@ function handleMpMessage(msg, fromId) {
             if (!mpIsHost) return;
             mpPlayerColors[fromId] = mpNextColor();
             mpPlayers[fromId] = { name: msg.name || 'Guest', score: 0, wrong: 0 };
+            // Send new guest the full current player list so they see everyone already in lobby
+            try {
+                mpConns[fromId].send({
+                    type: 'welcome',
+                    players: Object.fromEntries(
+                        Object.entries(mpPlayers).map(([pid, p]) => [pid, { name: p.name, color: mpPlayerColors[pid] }])
+                    )
+                });
+            } catch(e) {}
             mpUpdateLobbyList();
             broadcast({ type: 'player-joined', peerId: fromId, name: mpPlayers[fromId].name, color: mpPlayerColors[fromId], playerCount: Object.keys(mpPlayers).length });
             mpSetStatus(`${Object.keys(mpPlayers).length} player(s) in lobby`);
+            break;
+
+        case 'welcome':
+            Object.entries(msg.players).forEach(([pid, p]) => {
+                mpPlayers[pid] = { name: p.name, score: 0, wrong: 0 };
+                if (p.color) mpPlayerColors[pid] = p.color;
+            });
+            mpUpdateLobbyList();
             break;
 
         case 'player-joined':
@@ -599,6 +616,9 @@ function closeLobby() {
     document.getElementById('btn-create-room').disabled = false;
     document.getElementById('btn-join-room').disabled = false;
     document.getElementById('mp-name-input').disabled = false;
+    const connectBtn = document.querySelector('#mp-join-input button');
+    if (connectBtn) { connectBtn.textContent = 'Connect'; connectBtn.disabled = false; }
+    document.getElementById('mp-code-input').value = '';
     document.getElementById('start-screen').style.display = 'flex';
     stopTimer();
 }
