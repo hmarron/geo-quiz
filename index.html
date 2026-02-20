@@ -13,6 +13,7 @@
     <meta name="apple-mobile-web-app-title" content="GeoQuiz">
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/peerjs@1/dist/peerjs.min.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="flex flex-col items-center p-2 sm:p-4">
@@ -29,12 +30,9 @@
                 <button onclick="startSinglePlayer()" class="w-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white py-4 rounded-xl font-bold text-lg transition-colors">
                     Single Player
                 </button>
-                <div class="relative">
-                    <button disabled class="w-full bg-slate-800 text-slate-600 py-4 rounded-xl font-bold text-lg cursor-not-allowed border border-slate-700">
-                        Multiplayer
-                    </button>
-                    <span class="absolute top-1/2 -translate-y-1/2 right-4 text-xs bg-slate-700 text-slate-400 px-2 py-0.5 rounded-full">Soon</span>
-                </div>
+                <button onclick="startMultiplayer()" class="w-full bg-slate-700 hover:bg-slate-600 active:bg-slate-800 text-white py-4 rounded-xl font-bold text-lg transition-colors border border-slate-600">
+                    Multiplayer <span class="text-slate-400 font-normal text-sm">(Experimental)</span>
+                </button>
             </div>
             <button onclick="toggleScores()" class="text-sm text-slate-500 hover:text-slate-300 transition-colors">
                 High Scores
@@ -130,10 +128,88 @@
         </div>
     </div>
 
+    <!-- Multiplayer Lobby Modal -->
+    <div id="mp-lobby-modal" class="mp-lobby-modal p-4">
+        <div class="bg-slate-800 border border-slate-700 w-full max-w-sm rounded-2xl p-6 shadow-2xl">
+            <div class="flex justify-between items-center mb-5">
+                <h2 class="text-xl font-bold text-white">Multiplayer</h2>
+                <button onclick="closeLobby()" class="text-slate-400 hover:text-white">✕</button>
+            </div>
+
+            <!-- Player name -->
+            <div class="mb-4">
+                <label class="text-xs text-slate-400 mb-1 block">Your name:</label>
+                <input id="mp-name-input" type="text" maxlength="16" placeholder="Player"
+                       class="w-full bg-slate-900 border border-slate-600 focus:border-blue-500 rounded-lg px-3 py-2 text-sm font-bold text-white outline-none transition-colors"
+                       autocomplete="off" spellcheck="false">
+            </div>
+
+            <!-- Create / Join toggle -->
+            <div class="grid grid-cols-2 gap-2 mb-5">
+                <button id="btn-create-room" onclick="createRoom()" class="py-2 rounded-lg font-bold text-sm bg-blue-600 hover:bg-blue-500 text-white transition-colors">Create Room</button>
+                <button id="btn-join-room" onclick="showJoinInput()" class="py-2 rounded-lg font-bold text-sm bg-slate-700 hover:bg-slate-600 text-white transition-colors border border-slate-600">Join Room</button>
+            </div>
+
+            <!-- Room code display (host) -->
+            <div id="mp-code-display" class="hidden mb-4">
+                <p class="text-xs text-slate-400 mb-1">Room code — share with friends:</p>
+                <div class="flex items-center gap-2">
+                    <span id="mp-room-code" class="mp-code flex-1 text-center"></span>
+                    <button onclick="copyRoomCode()" id="btn-copy-code" class="text-xs bg-slate-700 hover:bg-slate-600 px-3 py-2 rounded-lg text-slate-300 transition-colors whitespace-nowrap">Copy</button>
+                </div>
+            </div>
+
+            <!-- Join input (guest) -->
+            <div id="mp-join-input" class="hidden mb-4">
+                <p class="text-xs text-slate-400 mb-1">Enter room code:</p>
+                <div class="flex gap-2">
+                    <input id="mp-code-input" type="text" maxlength="6" placeholder="ABCD12"
+                           class="flex-1 bg-slate-900 border border-slate-600 focus:border-blue-500 rounded-lg px-3 py-2 text-sm font-mono font-bold text-white outline-none uppercase tracking-widest"
+                           autocomplete="off" autocapitalize="characters" spellcheck="false">
+                    <button onclick="joinRoom()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-lg text-sm font-bold transition-colors">Connect</button>
+                </div>
+                <p id="mp-join-error" class="hidden text-xs text-red-400 mt-1"></p>
+            </div>
+
+            <!-- Status / player list -->
+            <div id="mp-status" class="hidden mb-4">
+                <p id="mp-status-text" class="text-xs text-slate-400 mb-2"></p>
+                <ul id="mp-player-list" class="flex flex-col gap-1"></ul>
+            </div>
+
+            <!-- Mode selector + Start (host only) -->
+            <div id="mp-host-controls" class="hidden">
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="text-xs text-slate-400">Mode:</span>
+                    <select id="mp-mode-select" class="flex-1 bg-slate-700 border border-slate-600 text-white text-sm rounded-lg px-2 py-1.5 outline-none">
+                        <option value="race">Race (first correct wins)</option>
+                        <option value="compete">Compete (independent)</option>
+                    </select>
+                </div>
+                <button onclick="mpStartGame()" id="btn-mp-start" class="w-full bg-green-600 hover:bg-green-500 text-white py-2.5 rounded-xl font-bold transition-colors">Start Game</button>
+            </div>
+
+            <!-- Guest waiting message -->
+            <div id="mp-guest-waiting" class="hidden text-center text-sm text-slate-400 py-2">Waiting for host to start the game…</div>
+        </div>
+    </div>
+
+    <!-- Multiplayer Finish Modal -->
+    <div id="mp-finish-modal" class="mp-finish-modal p-4">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+            <div class="text-4xl text-center mb-2">🏆</div>
+            <h2 class="text-xl font-bold text-white text-center mb-4" id="mp-finish-title">Game Over</h2>
+            <div id="mp-results-list" class="flex flex-col gap-2 mb-5"></div>
+            <button id="btn-mp-play-again" onclick="mpPlayAgain()" class="hidden w-full bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-xl font-bold transition-colors mb-2">Play Again</button>
+            <button onclick="mpGoHome()" class="w-full bg-slate-700 hover:bg-slate-600 text-white py-2.5 rounded-xl font-bold transition-colors">Home</button>
+        </div>
+    </div>
+
     <!-- Header UI -->
     <div class="w-full max-w-5xl flex items-center justify-between gap-2 mb-1">
         <div class="flex items-center gap-2">
             <span class="text-xs font-mono text-slate-400"><span id="score" class="font-bold text-green-400">0</span>✓ <span id="wrong-count" class="font-bold text-red-400">0</span>✗ <span id="timer" class="text-slate-500 mx-1">0:00</span> <span id="remaining" class="font-bold text-blue-400">0</span> left</span>
+            <span id="mp-scoreboard" class="hidden text-xs font-mono text-slate-400 ml-2"></span>
         </div>
         <div class="flex items-center gap-1">
             <button onclick="resetGame()" class="text-xs bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded-lg font-bold transition-all">↺</button>

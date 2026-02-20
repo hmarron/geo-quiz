@@ -5,6 +5,7 @@ const GEOJSON_URL = 'https://raw.githubusercontent.com/nvkelso/natural-earth-vec
 const CDN_URLS = [
     'https://d3js.org/d3.v7.min.js',
     'https://cdn.tailwindcss.com',
+    'https://unpkg.com/peerjs@1/dist/peerjs.min.js',
 ];
 
 self.addEventListener('install', () => self.skipWaiting());
