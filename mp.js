@@ -157,6 +157,8 @@ function onConnectedToHost(conn) {
     conn.on('close', () => mpGuestHandleHostDisconnect());
     conn.on('error', () => mpGuestHandleHostDisconnect());
     sendToHost({ type: 'ready', name: mpLocalName });
+    const connectBtn = document.querySelector('#mp-join-input button');
+    if (connectBtn) { connectBtn.textContent = 'Connected ✓'; connectBtn.disabled = true; }
     document.getElementById('mp-status').classList.remove('hidden');
     document.getElementById('mp-guest-waiting').classList.remove('hidden');
     mpSetStatus('Connected! Waiting for host to start…');
