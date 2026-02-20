@@ -346,5 +346,28 @@ if (window.visualViewport) {
     syncViewportHeight();
 }
 
+// PWA install prompt
+let installPromptEvent = null;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    installPromptEvent = e;
+    document.getElementById('install-btn').classList.remove('hidden');
+});
+
+window.addEventListener('appinstalled', () => {
+    installPromptEvent = null;
+    document.getElementById('install-btn').classList.add('hidden');
+});
+
+function installApp() {
+    if (!installPromptEvent) return;
+    installPromptEvent.prompt();
+    installPromptEvent.userChoice.then(() => {
+        installPromptEvent = null;
+        document.getElementById('install-btn').classList.add('hidden');
+    });
+}
+
 setMode(gameMode);
 init();
