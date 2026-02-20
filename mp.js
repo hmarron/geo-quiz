@@ -13,6 +13,14 @@ let mpLocalName = 'You';
 let mpMyPeerId = null;
 let mpPlayerColors = {};  // { peerId: '#hex' }
 
+const MP_ACK_TIMEOUT_MS = 3000;   // max wait for all acks before sending go anyway
+const MP_WINNER_WINDOW_MS = 300;  // collect correct answers for this long, pick min ts
+
+let mpRoundAcked = {};            // { peerId: bool } — who has acked current question
+let mpAckTimeout = null;          // timeout handle for ack wait
+let mpCorrectAnswers = [];        // [{ peerId, ts }] collected during winner window
+let mpWinnerWindowTimer = null;   // timeout handle for winner window
+
 const MP_COLOR_PALETTE = [
     '#3b82f6', // blue
     '#f97316', // orange
@@ -214,6 +222,15 @@ function handleMpMessage(msg, fromId) {
         case 'question':
             if (msg.remaining !== undefined) document.getElementById('remaining').innerText = msg.remaining;
             mpSetQuestion(msg.featureId);
+            if (mpMode === 'compete') mpGo();  // compete: render immediately, no ack needed
+            break;
+
+        case 'ack':
+            mpHandleAck(fromId);
+            break;
+
+        case 'go':
+            mpGo();
             break;
 
         case 'answered':
@@ -221,8 +238,17 @@ function handleMpMessage(msg, fromId) {
             mpRoundAnswered[fromId] = true;
             if (mpMode === 'race') {
                 if (msg.correct && !mpRaceResolved) {
-                    mpResolveRound(fromId);
-                } else if (!mpRaceResolved) {
+                    mpCorrectAnswers.push({ peerId: fromId, ts: msg.ts || Date.now() });
+                    if (!mpWinnerWindowTimer) {
+                        mpWinnerWindowTimer = setTimeout(() => {
+                            mpWinnerWindowTimer = null;
+                            if (!mpRaceResolved && mpCorrectAnswers.length > 0) {
+                                mpCorrectAnswers.sort((a, b) => a.ts - b.ts);
+                                mpResolveRound(mpCorrectAnswers[0].peerId);
+                            }
+                        }, MP_WINNER_WINDOW_MS);
+                    }
+                } else if (!msg.correct && !mpRaceResolved) {
                     const allAnswered = Object.keys(mpPlayers).every(pid => mpRoundAnswered[pid]);
                     if (allAnswered) mpResolveRound(null);
                 }
@@ -425,20 +451,44 @@ function mpAdvance() {
     mpRoundAnswered = {};
     Object.keys(mpPlayers).forEach(pid => { mpRoundAnswered[pid] = false; });
     mpRaceResolved = false;
+    mpRoundAcked = {};
+    Object.keys(mpPlayers).forEach(pid => { mpRoundAcked[pid] = false; });
+    mpCorrectAnswers = [];
     const remaining = mpQuestionPool.length - mpQuestionIdx;
     document.getElementById('remaining').innerText = remaining;
     broadcast({ type: 'question', featureId, remaining });
-    mpSetQuestion(featureId);
+    mpSetQuestion(featureId);  // stores target, no rendering yet
+    if (mpMode === 'compete') {
+        mpGo();  // compete: render immediately, no ack needed
+    } else {
+        // race: wait for all guests to ack, with timeout fallback
+        mpAckTimeout = setTimeout(() => {
+            mpAckTimeout = null;
+            broadcast({ type: 'go' });
+            mpGo();
+        }, MP_ACK_TIMEOUT_MS);
+        mpHandleAck(mpMyPeerId);  // host counts itself as acked immediately
+    }
 }
 
 function mpSetQuestion(featureId) {
     const feature = fullDataset.find(f => f.properties.ISO_A3 === featureId);
     if (!feature) return;
     currentTarget = feature;
-    canAnswer = true;
+    canAnswer = false;
     mpRaceResolved = false;
 
     if (!startTime) startTimer();
+
+    // No rendering yet — wait for 'go' (race) or immediate mpGo() call (compete)
+    if (!mpIsHost && mpMode === 'race') {
+        sendToHost({ type: 'ack' });
+    }
+}
+
+function mpGo() {
+    if (!currentTarget) return;
+    canAnswer = true;
 
     if (gameMode === 'hard') {
         answerInput.value = '';
@@ -470,6 +520,23 @@ function mpSetQuestion(featureId) {
     } catch(e) {}
 }
 
+function mpHandleAck(peerId) {
+    if (!mpIsHost) return;
+    mpRoundAcked[peerId] = true;
+    mpCheckAllAcked();
+}
+
+function mpCheckAllAcked() {
+    if (!mpAckTimeout) return;  // not currently waiting for acks — ignore stray calls
+    const allAcked = Object.keys(mpRoundAcked).every(pid => mpRoundAcked[pid]);
+    if (allAcked) {
+        clearTimeout(mpAckTimeout);
+        mpAckTimeout = null;
+        broadcast({ type: 'go' });
+        mpGo();  // host applies go locally
+    }
+}
+
 function mpHandleAnswer(correct) {
     if (!canAnswer) return;
     const targetName = getCountryName(currentTarget);
@@ -481,9 +548,19 @@ function mpHandleAnswer(correct) {
             document.getElementById('score').innerText = score;
             showOverlay(targetName, true);
             if (mpIsHost) {
-                mpResolveRound(mpMyPeerId);
+                mpCorrectAnswers.push({ peerId: mpMyPeerId, ts: Date.now() });
+                mpRoundAnswered[mpMyPeerId] = true;
+                if (!mpWinnerWindowTimer) {
+                    mpWinnerWindowTimer = setTimeout(() => {
+                        mpWinnerWindowTimer = null;
+                        if (!mpRaceResolved && mpCorrectAnswers.length > 0) {
+                            mpCorrectAnswers.sort((a, b) => a.ts - b.ts);
+                            mpResolveRound(mpCorrectAnswers[0].peerId);
+                        }
+                    }, MP_WINNER_WINDOW_MS);
+                }
             } else {
-                sendToHost({ type: 'answered', correct: true });
+                sendToHost({ type: 'answered', correct: true, ts: Date.now() });
             }
         } else {
             canAnswer = false;
@@ -527,6 +604,7 @@ function mpHandleAnswer(correct) {
 
 function mpResolveRound(winnerPeerId) {
     if (!mpIsHost) return;
+    if (mpWinnerWindowTimer) { clearTimeout(mpWinnerWindowTimer); mpWinnerWindowTimer = null; }
     mpRaceResolved = true;
     canAnswer = false;
     const featureId = currentTarget?.properties?.ISO_A3;
@@ -612,12 +690,16 @@ function mpGoHome() {
 
 function closeLobby() {
     if (mpPeer) { try { mpPeer.destroy(); } catch(e) {} mpPeer = null; }
+    clearTimeout(mpAckTimeout); mpAckTimeout = null;
+    clearTimeout(mpWinnerWindowTimer); mpWinnerWindowTimer = null;
     mpConns = {};
     mpIsHost = false;
     mpIsActive = false;
     mpPlayers = {};
     mpPlayerColors = {};
     mpRoundAnswered = {};
+    mpRoundAcked = {};
+    mpCorrectAnswers = [];
     mpQuestionPool = [];
     mpQuestionIdx = 0;
     mpMyPeerId = null;
@@ -645,11 +727,16 @@ function mpHandleDisconnect(peerId) {
     delete mpConns[peerId];
     delete mpPlayers[peerId];
     delete mpRoundAnswered[peerId];
+    delete mpRoundAcked[peerId];
     broadcast({ type: 'player-left', peerId });
     mpShowToast(`${name} left the game`);
-    if (mpIsActive && mpMode === 'compete' && Object.keys(mpPlayers).length > 0) {
-        const allAnswered = Object.keys(mpPlayers).every(pid => mpRoundAnswered[pid]);
-        if (allAnswered) setTimeout(mpAdvance, 900);
+    if (mpIsActive) {
+        if (mpMode === 'race') {
+            mpCheckAllAcked();  // unblock ack wait if disconnected guest was last to ack
+        } else if (mpMode === 'compete' && Object.keys(mpPlayers).length > 0) {
+            const allAnswered = Object.keys(mpPlayers).every(pid => mpRoundAnswered[pid]);
+            if (allAnswered) setTimeout(mpAdvance, 900);
+        }
     }
 }
 
