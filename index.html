@@ -208,7 +208,7 @@
         let currentTarget = null;
         let canAnswer = false;
         let showBorders = true;
-        let gameMode = (navigator.maxTouchPoints > 0) ? 'easy' : 'hard';
+        let gameMode = 'easy';
 
         // Colors
         const COLOR_ACTIVE_FILL = "#1e293b";
@@ -395,6 +395,9 @@
 
             canAnswer = true;
 
+            const idx = Math.floor(Math.random() * pool.length);
+            currentTarget = pool[idx];
+
             if (gameMode === 'hard') {
                 answerInput.value = '';
                 answerInput.focus();
@@ -407,9 +410,6 @@
                 document.getElementById('hint-btn').style.display = 'none';
                 generateChoices();
             }
-
-            const idx = Math.floor(Math.random() * pool.length);
-            currentTarget = pool[idx];
 
             g.selectAll(".country").classed("country-highlight", d => d === currentTarget);
 
