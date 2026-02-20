@@ -545,6 +545,30 @@ let mpQuestionPool = [];    // Ordered ISO A3 codes (host-generated)
 let mpQuestionIdx = 0;
 let mpLocalName = 'You';
 let mpMyPeerId = null;
+let mpPlayerColors = {};  // { peerId: '#hex' }
+
+const MP_COLOR_PALETTE = [
+    '#3b82f6', // blue
+    '#f43f5e', // rose
+    '#10b981', // emerald
+    '#a855f7', // purple
+    '#06b6d4', // cyan
+    '#f97316', // orange
+    '#84cc16', // lime
+    '#ec4899', // pink
+];
+
+function mpNextColor() {
+    const used = Object.keys(mpPlayerColors).length;
+    return MP_COLOR_PALETTE[used % MP_COLOR_PALETTE.length];
+}
+
+function mpColorCountry(featureId, color) {
+    if (!featureId || !color) return;
+    g.selectAll(".country")
+        .filter(d => d.properties && d.properties.ISO_A3 === featureId)
+        .style("fill", color);
+}
 
 const MP_PREFIX = 'geoquiz-';
 
@@ -590,6 +614,7 @@ function createRoom() {
 
     mpPeer.on('open', (id) => {
         mpMyPeerId = id;
+        mpPlayerColors[id] = mpNextColor();
         mpPlayers[id] = { name: mpLocalName, score: 0, wrong: 0 };
         document.getElementById('mp-code-display').classList.remove('hidden');
         document.getElementById('mp-room-code').textContent = id.replace(MP_PREFIX, '');
@@ -684,14 +709,16 @@ function handleMpMessage(msg, fromId) {
     switch (msg.type) {
         case 'ready':
             if (!mpIsHost) return;
+            mpPlayerColors[fromId] = mpNextColor();
             mpPlayers[fromId] = { name: msg.name || 'Guest', score: 0, wrong: 0 };
             mpUpdateLobbyList();
-            broadcast({ type: 'player-joined', peerId: fromId, name: mpPlayers[fromId].name, playerCount: Object.keys(mpPlayers).length });
+            broadcast({ type: 'player-joined', peerId: fromId, name: mpPlayers[fromId].name, color: mpPlayerColors[fromId], playerCount: Object.keys(mpPlayers).length });
             mpSetStatus(`${Object.keys(mpPlayers).length} player(s) in lobby`);
             break;
 
         case 'player-joined':
             if (!mpPlayers[msg.peerId]) mpPlayers[msg.peerId] = { name: msg.name, score: 0, wrong: 0 };
+            if (msg.color) mpPlayerColors[msg.peerId] = msg.color;
             mpUpdateLobbyList();
             break;
 
@@ -740,9 +767,10 @@ function handleMpMessage(msg, fromId) {
             updateMpScoreboard();
             break;
 
-        case 'round-over':
+        case 'round-over': {
             mpRaceResolved = true;
             canAnswer = false;
+            if (msg.winner) mpColorCountry(msg.featureId, mpPlayerColors[msg.winner]);
             const winnerName = msg.winner === mpMyPeerId ? 'You' :
                                msg.winner === null ? null :
                                (mpPlayers[msg.winner]?.name || 'Someone');
@@ -752,6 +780,7 @@ function handleMpMessage(msg, fromId) {
                                 `${winnerName} got it!`;
             showOverlay(overlayText, isWin || msg.winner === null);
             break;
+        }
 
         case 'game-over':
             showMpFinishModal(msg.results);
@@ -790,9 +819,14 @@ function mpApplySettings(msg) {
     document.getElementById('remaining').innerText = pool.length;
     // Apply player list
     if (msg.players) {
-        Object.entries(msg.players).forEach(([pid, name]) => {
-            if (pid !== mpMyPeerId) mpPlayers[pid] = { name, score: 0, wrong: 0 };
+        Object.entries(msg.players).forEach(([pid, p]) => {
+            const name = typeof p === 'object' ? p.name : p;
+            const color = typeof p === 'object' ? p.color : null;
+            mpPlayers[pid] = { name, score: 0, wrong: 0 };
+            if (color) mpPlayerColors[pid] = color;
         });
+        // Guest gets their own color from the players dict
+        if (msg.players[mpMyPeerId]?.color) mpPlayerColors[mpMyPeerId] = msg.players[mpMyPeerId].color;
     }
     // Close lobby, start game
     document.getElementById('mp-lobby-modal').style.display = 'none';
@@ -803,8 +837,6 @@ function mpApplySettings(msg) {
     document.getElementById('score').innerText = 0;
     document.getElementById('wrong-count').innerText = 0;
     document.getElementById('timer').textContent = '0:00';
-    document.getElementById('mp-scoreboard').classList.remove('hidden');
-    updateMpScoreboard();
     // Guests wait for first 'question' message
 }
 
@@ -852,8 +884,10 @@ function mpStartGame() {
     mpQuestionPool = shuffled.map(f => f.properties.ISO_A3).filter(Boolean);
     mpQuestionIdx = 0;
 
-    const playerNames = {};
-    Object.entries(mpPlayers).forEach(([pid, p]) => { playerNames[pid] = p.name; });
+    const playerData = {};
+    Object.entries(mpPlayers).forEach(([pid, p]) => {
+        playerData[pid] = { name: p.name, color: mpPlayerColors[pid] };
+    });
 
     const startMsg = {
         type: 'game-start',
@@ -861,7 +895,7 @@ function mpStartGame() {
         regions: regions.filter(r => r.active).map(r => r.id),
         mpMode,
         questionPool: mpQuestionPool,
-        players: playerNames,
+        players: playerData,
     };
     broadcast(startMsg);
 
@@ -874,8 +908,6 @@ function mpStartGame() {
     document.getElementById('score').innerText = 0;
     document.getElementById('wrong-count').innerText = 0;
     document.getElementById('timer').textContent = '0:00';
-    document.getElementById('mp-scoreboard').classList.remove('hidden');
-    updateMpScoreboard();
 
     mpAdvance();
 }
@@ -1010,13 +1042,23 @@ function mpHandleAnswer(correct) {
 function mpResolveRound(winnerPeerId) {
     if (!mpIsHost) return;
     mpRaceResolved = true;
-    broadcast({ type: 'round-over', winner: winnerPeerId, featureId: currentTarget?.properties?.ISO_A3 });
+    canAnswer = false;
+    const featureId = currentTarget?.properties?.ISO_A3;
+    broadcast({ type: 'round-over', winner: winnerPeerId, featureId });
+    // Color the won country
+    if (winnerPeerId) mpColorCountry(featureId, mpPlayerColors[winnerPeerId]);
+    // Show overlay on host for guest wins (host already shows it for their own correct answer)
+    if (winnerPeerId !== mpMyPeerId) {
+        const targetName = getCountryName(currentTarget);
+        const winnerName = winnerPeerId === null ? null : (mpPlayers[winnerPeerId]?.name || 'Someone');
+        const text = winnerPeerId === null ? targetName : `${winnerName} got it!`;
+        showOverlay(text, false);
+    }
     // Update winner score
     if (winnerPeerId && winnerPeerId !== mpMyPeerId && mpPlayers[winnerPeerId]) {
         mpPlayers[winnerPeerId].score++;
         broadcast({ type: 'player-score', peerId: winnerPeerId, score: mpPlayers[winnerPeerId].score, wrong: mpPlayers[winnerPeerId].wrong });
     }
-    updateMpScoreboard();
     setTimeout(mpAdvance, 1200);
 }
 
@@ -1039,25 +1081,22 @@ function showMpFinishModal(results) {
     inputArea.classList.add('hidden');
     optionsGrid.classList.add('hidden');
     g.selectAll(".country").classed("country-highlight", false);
-    document.getElementById('mp-scoreboard').classList.add('hidden');
 
     const winner = results[0];
     const titleEl = document.getElementById('mp-finish-title');
-    if (winner.peerId === mpMyPeerId) {
-        titleEl.textContent = 'You Win! 🎉';
-    } else {
-        titleEl.textContent = `${winner.name} Wins!`;
-    }
+    titleEl.textContent = winner.peerId === mpMyPeerId ? 'You Win! 🎉' : `${winner.name} Wins!`;
 
     const list = document.getElementById('mp-results-list');
     list.innerHTML = results.map((r, i) => {
         const total = r.score + r.wrong;
         const acc = total > 0 ? Math.round(r.score / total * 100) : 0;
         const isMe = r.peerId === mpMyPeerId;
-        return `<div class="flex items-center gap-3 p-2.5 rounded-xl ${isMe ? 'bg-blue-900/40 border border-blue-700/50' : 'bg-slate-700/30'}">
+        const color = mpPlayerColors[r.peerId] || '#64748b';
+        return `<div class="flex items-center gap-3 p-2.5 rounded-xl ${isMe ? 'bg-slate-700/60 border border-slate-500/50' : 'bg-slate-700/30'}">
             <span class="text-slate-500 font-mono text-sm w-4 text-right">${i + 1}</span>
+            <span class="w-3 h-3 rounded-full shrink-0" style="background:${color}"></span>
             <span class="flex-1 text-sm font-semibold text-white">${r.name}${isMe ? ' (you)' : ''}</span>
-            <span class="text-green-400 font-mono text-sm">${r.score}✓</span>
+            <span class="font-mono text-sm" style="color:${color}">${r.score}✓</span>
             <span class="text-red-400 font-mono text-sm">${r.wrong}✗</span>
             <span class="text-slate-400 font-mono text-xs">${acc}%</span>
         </div>`;
@@ -1080,8 +1119,6 @@ function mpPlayAgain() {
         mpPlayers[pid].score = 0;
         mpPlayers[pid].wrong = 0;
     });
-    document.getElementById('mp-scoreboard').classList.remove('hidden');
-    updateMpScoreboard();
     mpIsActive = true;
     // Rebuild pool and start
     mpStartGame();
@@ -1098,6 +1135,7 @@ function closeLobby() {
     mpIsHost = false;
     mpIsActive = false;
     mpPlayers = {};
+    mpPlayerColors = {};
     mpRoundAnswered = {};
     mpQuestionPool = [];
     mpQuestionIdx = 0;
@@ -1113,7 +1151,6 @@ function closeLobby() {
     document.getElementById('btn-create-room').disabled = false;
     document.getElementById('btn-join-room').disabled = false;
     document.getElementById('mp-name-input').disabled = false;
-    document.getElementById('mp-scoreboard').classList.add('hidden');
     document.getElementById('start-screen').style.display = 'flex';
     stopTimer();
 }
