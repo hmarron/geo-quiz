@@ -59,6 +59,13 @@ function getCountryName(feature) {
     return p.NAME || p.ADMIN || p.name || "Unnamed Territory";
 }
 
+function getAcceptableNames(feature) {
+    if (!feature) return [];
+    const p = feature.properties;
+    const candidates = [p.NAME, p.ADMIN, p.NAME_LONG, p.ABBREV, p.ISO_A3, p.ISO_A2];
+    return [...new Set(candidates.filter(Boolean).map(normalizeString).filter(n => n.length > 0))];
+}
+
 function levenshteinDistance(s1, s2) {
     const m = s1.length;
     const n = s2.length;
@@ -259,14 +266,22 @@ function generateChoices() {
 function checkTypedAnswer() {
     if (!canAnswer) return;
     const guess = normalizeString(answerInput.value);
-    const actual = normalizeString(getCountryName(currentTarget));
     if (guess.length < 2) return;
-    if (guess === actual || (actual.includes(guess) && guess.length > 3)) {
-        handleCorrect();
-        return;
+
+    const acceptableNames = getAcceptableNames(currentTarget);
+
+    // Exact match or substring match against any acceptable name
+    for (const name of acceptableNames) {
+        if (guess === name || (name.includes(guess) && guess.length > 3)) {
+            handleCorrect();
+            return;
+        }
     }
-    const distance = levenshteinDistance(guess, actual);
-    const threshold = actual.length < 5 ? 1 : 2;
+
+    // Fuzzy match against the primary display name
+    const primary = normalizeString(getCountryName(currentTarget));
+    const distance = levenshteinDistance(guess, primary);
+    const threshold = primary.length < 5 ? 1 : 2;
     if (distance <= threshold) {
         handleCorrect();
     } else {
