@@ -1,0 +1,94 @@
+body {
+    background-color: #0f172a;
+    color: #f8fafc;
+    overflow: hidden;
+    height: 100dvh;
+}
+button {
+    touch-action: manipulation;
+}
+#map-container svg {
+    touch-action: none;
+}
+#map-container {
+    background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+    border-radius: 1rem;
+}
+.country {
+    stroke-width: 0.5px;
+    transition: fill 0.3s ease, stroke 0.3s ease;
+    outline: none;
+    fill: #1e293b;
+    stroke: #334155;
+}
+.country-excluded {
+    fill: #0f172a;
+    opacity: 0.4;
+    pointer-events: none;
+}
+.country-highlight {
+    fill: #fbbf24 !important;
+    stroke: none !important;
+}
+.btn-option {
+    background: #1e293b;
+    border: 1px solid #475569;
+    transition: all 0.2s ease;
+}
+.btn-option:hover {
+    background: #334155;
+    border-color: #64748b;
+}
+.btn-option.correct {
+    background: #166534 !important;
+    border-color: #22c55e !important;
+}
+.btn-option.wrong {
+    background: #7f1d1d !important;
+    border-color: #ef4444 !important;
+}
+.zoom-controls {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.btn-zoom {
+    background: rgba(30, 41, 59, 0.8);
+    border: 1px solid #475569;
+    color: white;
+    padding: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    backdrop-filter: blur(4px);
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+}
+#loader {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #0f172a;
+    z-index: 100;
+}
+.settings-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.8);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+}
+.mode-btn-active {
+    background-color: #2563eb !important;
+    border-color: #3b82f6 !important;
+}
