@@ -210,6 +210,7 @@ function handleMpMessage(msg, fromId) {
             break;
 
         case 'question':
+            if (msg.remaining !== undefined) document.getElementById('remaining').innerText = msg.remaining;
             mpSetQuestion(msg.featureId);
             break;
 
@@ -219,7 +220,7 @@ function handleMpMessage(msg, fromId) {
             if (mpMode === 'race') {
                 if (msg.correct && !mpRaceResolved) {
                     mpResolveRound(fromId);
-                } else {
+                } else if (!mpRaceResolved) {
                     const allAnswered = Object.keys(mpPlayers).every(pid => mpRoundAnswered[pid]);
                     if (allAnswered) mpResolveRound(null);
                 }
@@ -420,7 +421,9 @@ function mpAdvance() {
     mpRoundAnswered = {};
     Object.keys(mpPlayers).forEach(pid => { mpRoundAnswered[pid] = false; });
     mpRaceResolved = false;
-    broadcast({ type: 'question', featureId });
+    const remaining = mpQuestionPool.length - mpQuestionIdx;
+    document.getElementById('remaining').innerText = remaining;
+    broadcast({ type: 'question', featureId, remaining });
     mpSetQuestion(featureId);
 }
 
@@ -555,17 +558,14 @@ function showMpFinishModal(results) {
 
     const list = document.getElementById('mp-results-list');
     list.innerHTML = results.map((r, i) => {
-        const total = r.score + r.wrong;
-        const acc = total > 0 ? Math.round(r.score / total * 100) : 0;
         const isMe = r.peerId === mpMyPeerId;
         const color = mpPlayerColors[r.peerId] || '#64748b';
         return `<div class="flex items-center gap-3 p-2.5 rounded-xl ${isMe ? 'bg-slate-700/60 border border-slate-500/50' : 'bg-slate-700/30'}">
             <span class="text-slate-500 font-mono text-sm w-4 text-right">${i + 1}</span>
             <span class="w-3 h-3 rounded-full shrink-0" style="background:${color}"></span>
-            <span class="flex-1 text-sm font-semibold text-white">${r.name}${isMe ? ' (you)' : ''}</span>
-            <span class="font-mono text-sm" style="color:${color}">${r.score}✓</span>
+            <span class="flex-1 text-sm font-semibold" style="color:${color}">${r.name}${isMe ? ' (you)' : ''}</span>
+            <span class="text-green-400 font-mono text-sm">${r.score}✓</span>
             <span class="text-red-400 font-mono text-sm">${r.wrong}✗</span>
-            <span class="text-slate-400 font-mono text-xs">${acc}%</span>
         </div>`;
     }).join('');
 
