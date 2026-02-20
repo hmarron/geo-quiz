@@ -213,9 +213,15 @@
             <h2 class="text-xl font-bold text-white text-center mb-4" id="mp-finish-title">Game Over</h2>
             <div id="mp-results-list" class="flex flex-col gap-2 mb-5"></div>
             <button id="btn-mp-play-again" onclick="mpPlayAgain()" class="hidden w-full bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-xl font-bold transition-colors mb-2">Play Again</button>
-            <button onclick="mpGoHome()" class="w-full bg-slate-700 hover:bg-slate-600 text-white py-2.5 rounded-xl font-bold transition-colors">Home</button>
+            <div class="grid grid-cols-2 gap-2 mt-2">
+                <button onclick="mpGoHome()" class="bg-slate-700 hover:bg-slate-600 text-white py-2.5 rounded-xl font-bold transition-colors">Home</button>
+                <button onclick="mpViewMap()" class="bg-slate-700 hover:bg-slate-600 text-white py-2.5 rounded-xl font-bold transition-colors">View Map</button>
+            </div>
         </div>
     </div>
+
+    <!-- Floating Results button (shown when map is being viewed after MP game) -->
+    <button id="mp-results-pill" onclick="mpShowResults()" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-800 border border-slate-600 text-white text-sm font-bold px-5 py-2.5 rounded-full shadow-xl z-50 hover:bg-slate-700 transition-colors">Results →</button>
 
     <!-- Header UI -->
     <div class="w-full max-w-5xl flex items-center justify-between gap-2 mb-1">

@@ -578,6 +578,7 @@ function showMpFinishModal(results) {
 function mpPlayAgain() {
     if (!mpIsHost) return;
     document.getElementById('mp-finish-modal').style.display = 'none';
+    document.getElementById('mp-results-pill').classList.add('hidden');
     score = 0; wrongCount = 0; hintCount = 0;
     startTime = null;
     document.getElementById('score').innerText = 0;
@@ -591,8 +592,19 @@ function mpPlayAgain() {
     mpStartGame();
 }
 
+function mpViewMap() {
+    document.getElementById('mp-finish-modal').style.display = 'none';
+    document.getElementById('mp-results-pill').classList.remove('hidden');
+}
+
+function mpShowResults() {
+    document.getElementById('mp-results-pill').classList.add('hidden');
+    document.getElementById('mp-finish-modal').style.display = 'flex';
+}
+
 function mpGoHome() {
     document.getElementById('mp-finish-modal').style.display = 'none';
+    document.getElementById('mp-results-pill').classList.add('hidden');
     closeLobby();
 }
 
