@@ -10,6 +10,8 @@ let height = container.clientHeight;
 let score = 0;
 let wrongCount = 0;
 let pool = [];
+let startTime = null;
+let timerInterval = null;
 let fullDataset = [];
 let currentTarget = null;
 let canAnswer = false;
@@ -185,6 +187,37 @@ function updateActiveLabel() {
     document.getElementById('active-regions-label').innerText = activeNames.length > 0 ? activeNames.join(', ') : 'None selected';
 }
 
+function formatTime(ms) {
+    const secs = Math.floor(ms / 1000);
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+function startTimer() {
+    startTime = Date.now();
+    timerInterval = setInterval(() => {
+        document.getElementById('timer').textContent = formatTime(Date.now() - startTime);
+    }, 1000);
+}
+
+function stopTimer() {
+    clearInterval(timerInterval);
+    timerInterval = null;
+}
+
+function showFinishModal() {
+    stopTimer();
+    const elapsed = startTime ? Date.now() - startTime : 0;
+    const total = score + wrongCount;
+    const accuracy = total > 0 ? Math.round(score / total * 100) : 0;
+    document.getElementById('final-score').textContent = score;
+    document.getElementById('final-wrong').textContent = wrongCount;
+    document.getElementById('final-time').textContent = formatTime(elapsed);
+    document.getElementById('final-accuracy').textContent = `${accuracy}% accuracy`;
+    document.getElementById('finish-modal').style.display = 'flex';
+}
+
 function showOverlay(name, isCorrect) {
     const overlay = document.getElementById('country-overlay');
     const nameDisplay = document.getElementById('country-name-display');
@@ -197,12 +230,13 @@ function showOverlay(name, isCorrect) {
 function nextQuestion() {
     if (pool.length === 0) {
         inputArea.classList.add('hidden');
-        optionsGrid.classList.remove('hidden');
-        optionsGrid.innerHTML = `<button onclick="resetGame()" class="col-span-full py-4 bg-blue-600 hover:bg-blue-500 rounded-xl font-bold transition-colors">Restart Quiz</button>`;
+        optionsGrid.classList.add('hidden');
         g.selectAll(".country").classed("country-highlight", false);
-        document.getElementById('hint-btn').style.display = 'none';
+        showFinishModal();
         return;
     }
+
+    if (!startTime) startTimer();
 
     canAnswer = true;
 
@@ -321,8 +355,12 @@ function handleWrong() {
 function resetGame() {
     score = 0;
     wrongCount = 0;
+    startTime = null;
+    stopTimer();
     document.getElementById('score').innerText = 0;
     document.getElementById('wrong-count').innerText = 0;
+    document.getElementById('timer').textContent = '0:00';
+    document.getElementById('finish-modal').style.display = 'none';
     pool = fullDataset.filter(isAllowed);
     document.getElementById('remaining').innerText = pool.length;
     nextQuestion();

@@ -24,6 +24,30 @@
         </div>
     </div>
 
+    <!-- Finish Modal -->
+    <div id="finish-modal" class="finish-modal p-4">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-8 w-full max-w-sm shadow-2xl text-center">
+            <div class="text-5xl mb-3">🏆</div>
+            <h2 class="text-2xl font-bold text-white mb-6">Quiz Complete!</h2>
+            <div class="grid grid-cols-3 gap-4 mb-4">
+                <div class="bg-slate-700/50 rounded-xl p-3">
+                    <div id="final-score" class="text-2xl font-bold text-green-400">0</div>
+                    <div class="text-xs text-slate-400 uppercase tracking-wide mt-1">Correct</div>
+                </div>
+                <div class="bg-slate-700/50 rounded-xl p-3">
+                    <div id="final-wrong" class="text-2xl font-bold text-red-400">0</div>
+                    <div class="text-xs text-slate-400 uppercase tracking-wide mt-1">Wrong</div>
+                </div>
+                <div class="bg-slate-700/50 rounded-xl p-3">
+                    <div id="final-time" class="text-2xl font-bold text-blue-400">0:00</div>
+                    <div class="text-xs text-slate-400 uppercase tracking-wide mt-1">Time</div>
+                </div>
+            </div>
+            <div class="text-sm text-slate-400 mb-6" id="final-accuracy"></div>
+            <button onclick="resetGame()" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-bold transition-colors">Play Again</button>
+        </div>
+    </div>
+
     <!-- Settings Modal -->
     <div id="settings-modal" class="settings-modal p-4">
         <div class="bg-slate-800 border border-slate-700 w-full max-w-2xl rounded-2xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
@@ -66,7 +90,7 @@
     <div class="w-full max-w-5xl flex items-center justify-between gap-2 mb-1">
         <div class="flex items-center gap-2">
             <h1 class="text-sm font-bold text-blue-400 hidden sm:block">Geography Challenge</h1>
-            <span class="text-xs font-mono text-slate-400"><span id="score" class="font-bold text-green-400">0</span>✓ <span id="wrong-count" class="font-bold text-red-400">0</span>✗ <span id="remaining" class="font-bold text-blue-400">0</span> left</span>
+            <span class="text-xs font-mono text-slate-400"><span id="score" class="font-bold text-green-400">0</span>✓ <span id="wrong-count" class="font-bold text-red-400">0</span>✗ <span id="timer" class="text-slate-500 mx-1">0:00</span> <span id="remaining" class="font-bold text-blue-400">0</span> left</span>
         </div>
         <div class="flex items-center gap-1">
             <button id="install-btn" onclick="installApp()" class="hidden text-xs bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded-lg font-bold transition-all">Install</button>
