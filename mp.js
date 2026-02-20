@@ -312,8 +312,10 @@ function mpApplySettings(msg) {
         // Guest gets their own color from the players dict
         if (msg.players[mpMyPeerId]?.color) mpPlayerColors[mpMyPeerId] = msg.players[mpMyPeerId].color;
     }
-    // Close lobby, start game
+    // Close any open screens and start game
     document.getElementById('mp-lobby-modal').style.display = 'none';
+    document.getElementById('mp-finish-modal').style.display = 'none';
+    document.getElementById('mp-results-pill').classList.add('hidden');
     document.getElementById('start-screen').style.display = 'none';
     mpIsActive = true;
     score = 0; wrongCount = 0; hintCount = 0;
