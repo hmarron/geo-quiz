@@ -16,9 +16,9 @@ let canAnswer = false;
 let showBorders = true;
 let gameMode = 'easy';
 
-const COLOR_ACTIVE_FILL = "#1e293b";
-const COLOR_BORDER = "#475569";
-const COLOR_EXCLUDED_FILL = "#0f172a";
+const COLOR_ACTIVE_FILL = "#374151";
+const COLOR_BORDER = "#6b7280";
+const COLOR_EXCLUDED_FILL = "#1a2a3a";
 
 const regions = [
     { id: 'north-america', label: 'North America', active: true },

@@ -11,15 +11,15 @@ button {
     touch-action: none;
 }
 #map-container {
-    background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+    background: radial-gradient(circle at center, #1a3a6e 0%, #0b1d3a 100%);
     border-radius: 1rem;
 }
 .country {
     stroke-width: 0.5px;
     transition: fill 0.3s ease, stroke 0.3s ease;
     outline: none;
-    fill: #1e293b;
-    stroke: #334155;
+    fill: #374151;
+    stroke: #6b7280;
 }
 .country-excluded {
     fill: #0f172a;
