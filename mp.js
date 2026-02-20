@@ -15,13 +15,13 @@ let mpPlayerColors = {};  // { peerId: '#hex' }
 
 const MP_COLOR_PALETTE = [
     '#3b82f6', // blue
-    '#f43f5e', // rose
+    '#f97316', // orange
     '#10b981', // emerald
     '#a855f7', // purple
     '#06b6d4', // cyan
-    '#f97316', // orange
+    '#e879f9', // fuchsia
     '#84cc16', // lime
-    '#ec4899', // pink
+    '#6366f1', // indigo
 ];
 
 function mpNextColor() {
