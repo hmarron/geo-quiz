@@ -255,6 +255,8 @@ function handleMpMessage(msg, fromId) {
         case 'round-over':
         case 'land-grab-question':
         case 'land-grab-claimed':
+        case 'land-grab-next':
+        case 'land-grab-pool':
             activeMode.onMessage(msg, fromId);
             break;
     }
@@ -516,7 +518,6 @@ function closeLobby() {
     mpLandGrabPool = [];
     mpLandGrabClaimed = {};
     mpLandGrabAssignments = {};
-    mpLandGrabRaceRound = false;
     activeMode = SoloMode;
     document.getElementById('mp-lobby-modal').style.display = 'none';
     document.getElementById('mp-code-display').classList.add('hidden');

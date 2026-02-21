@@ -1,113 +1,69 @@
 // ─── MP Land Grab mode object ─────────────────────────────────────────────────
-// Owns: mpLandGrabPool, mpLandGrabClaimed, mpLandGrabAssignments,
-//       mpLandGrabRaceRound, and all land-grab helper functions.
+// Continuous model: each player gets questions independently at their own pace.
+// Countries are colored only when claimed (correct answer), never when assigned.
 
 let mpLandGrabPool = [];
 let mpLandGrabClaimed = {};
-let mpLandGrabAssignments = {};
-let mpLandGrabRaceRound = false;
+let mpLandGrabAssignments = {}; // { peerId: iso | null }  null = no more questions
 
+// Host: kick off the game by assigning each player their first country.
 function mpLandGrabAdvance() {
     if (!mpIsHost) return;
+    if (!startTime) startTimer();
+    Object.keys(mpPlayers).forEach(pid => mpLandGrabAssignNext(pid));
+}
+
+// Host: assign the next country from the pool to a specific player.
+// If pool is empty, mark that player as done and check for game-over.
+function mpLandGrabAssignNext(peerId) {
     if (mpLandGrabPool.length === 0) {
-        const results = Object.entries(mpPlayers).map(([pid, p]) => ({
-            peerId: pid, name: p.name, score: p.score, wrong: p.wrong,
-        }));
-        results.forEach(r => { if (r.peerId === mpMyPeerId) { r.score = score; r.wrong = wrongCount; } });
-        results.sort((a, b) => b.score - a.score);
-        broadcast({ type: 'game-over', results });
-        showMpFinishModal(results);
+        mpLandGrabAssignments[peerId] = null;
+        mpLandGrabCheckAllDone();
         return;
     }
 
-    const playerIds = Object.keys(mpPlayers);
-    mpLandGrabRaceRound = mpLandGrabPool.length < playerIds.length;
+    const idx = Math.floor(Math.random() * mpLandGrabPool.length);
+    const iso = mpLandGrabPool[idx];
+    mpLandGrabPool.splice(idx, 1);
+    mpLandGrabAssignments[peerId] = iso;
 
-    mpRoundAnswered = {};
-    playerIds.forEach(pid => mpRoundAnswered[pid] = false);
-    mpRaceResolved = false;
-    mpRoundAcked = {};
-    playerIds.forEach(pid => mpRoundAcked[pid] = false);
-    mpCorrectAnswers = [];
+    const remaining = mpLandGrabPool.length;
+    document.getElementById('remaining').innerText = remaining;
+    broadcast({ type: 'land-grab-pool', remaining });
 
-    if (mpLandGrabRaceRound) {
-        const iso = mpLandGrabPool[0];
-        playerIds.forEach(pid => mpLandGrabAssignments[pid] = iso);
-    } else {
-        const shuffled = [...mpLandGrabPool].sort(() => Math.random() - 0.5);
-        playerIds.forEach((pid, i) => mpLandGrabAssignments[pid] = shuffled[i]);
-    }
-
-    document.getElementById('remaining').innerText = mpLandGrabPool.length;
-
-    broadcast({
-        type: 'land-grab-question',
-        assignments: mpLandGrabAssignments,
-        claimed: mpLandGrabClaimed,
-        poolRemaining: mpLandGrabPool.length,
-        raceRound: mpLandGrabRaceRound,
-    });
-
-    const myIso = mpLandGrabAssignments[mpMyPeerId];
-    const feature = fullDataset.find(f => f.properties.ISO_A3 === myIso);
-    currentTarget = feature || null;
-    mpRenderLandGrabMap(mpLandGrabAssignments, mpLandGrabClaimed);
-
-    if (!startTime) startTimer();
-
-    if (mpLandGrabRaceRound) {
-        mpAckTimeout = setTimeout(() => {
-            mpAckTimeout = null;
-            broadcast({ type: 'go' });
-            renderQuestion();
-        }, MP_ACK_TIMEOUT_MS);
-        mpHandleAck(mpMyPeerId);
-    } else {
+    if (peerId === mpMyPeerId) {
+        currentTarget = fullDataset.find(f => f.properties.ISO_A3 === iso) || null;
         renderQuestion();
+    } else {
+        const conn = mpConns[peerId];
+        if (conn) try { conn.send({ type: 'land-grab-next', iso, remaining }); } catch(e) {}
     }
 }
 
-function mpRenderLandGrabMap(assignments, claimed) {
-    Object.entries(claimed || {}).forEach(([iso, peerId]) => {
-        mpColorCountry(iso, mpPlayerColors[peerId]);
-    });
-    Object.entries(assignments || {}).forEach(([peerId, iso]) => {
-        if (peerId !== mpMyPeerId && !(claimed || {})[iso]) {
-            mpColorCountry(iso, mpPlayerColors[peerId]);
-        }
-    });
+// Host: end the game when every active player has no remaining assignment.
+function mpLandGrabCheckAllDone() {
+    const active = Object.keys(mpPlayers);
+    if (active.length === 0) return;
+    if (!active.every(pid => mpLandGrabAssignments[pid] === null)) return;
+
+    const results = Object.entries(mpPlayers).map(([pid, p]) => ({
+        peerId: pid, name: p.name, score: p.score, wrong: p.wrong,
+    }));
+    results.forEach(r => { if (r.peerId === mpMyPeerId) { r.score = score; r.wrong = wrongCount; } });
+    results.sort((a, b) => b.score - a.score);
+    broadcast({ type: 'game-over', results });
+    showMpFinishModal(results);
 }
 
+// Host: record a correct claim and broadcast the coloring to all players.
 function mpLandGrabClaim(peerId, iso) {
-    mpLandGrabPool = mpLandGrabPool.filter(c => c !== iso);
     mpLandGrabClaimed[iso] = peerId;
     if (peerId !== mpMyPeerId && mpPlayers[peerId]) mpPlayers[peerId].score++;
     const playerScore = peerId === mpMyPeerId ? score : mpPlayers[peerId].score;
     mpColorCountry(iso, mpPlayerColors[peerId]);
-    broadcast({ type: 'land-grab-claimed', peerId, iso, score: playerScore });
+    broadcast({ type: 'land-grab-claimed', peerId, iso });
     broadcast({ type: 'player-score', peerId, score: playerScore,
         wrong: peerId === mpMyPeerId ? wrongCount : mpPlayers[peerId]?.wrong ?? 0 });
-}
-
-function mpLandGrabResolveRace() {
-    mpWinnerWindowTimer = null;
-    if (mpRaceResolved || mpCorrectAnswers.length === 0) return;
-    mpRaceResolved = true;
-    canAnswer = false;
-    mpCorrectAnswers.sort((a, b) => a.ts - b.ts);
-    const winner = mpCorrectAnswers[0].peerId;
-    const iso = mpLandGrabAssignments[winner];
-    mpLandGrabClaim(winner, iso);
-    broadcast({ type: 'round-over', winner, featureId: iso });
-    if (winner !== mpMyPeerId) {
-        showOverlay(`${mpPlayers[winner]?.name || 'Someone'} got it!`, false);
-    }
-    setTimeout(mpLandGrabAdvance, 1200);
-}
-
-function mpLandGrabCheckRoundEnd() {
-    const allAnswered = Object.keys(mpPlayers).every(pid => mpRoundAnswered[pid]);
-    if (allAnswered) setTimeout(mpLandGrabAdvance, 900);
 }
 
 const LandGrabMode = {
@@ -121,32 +77,18 @@ const LandGrabMode = {
             score++;
             document.getElementById('score').innerText = score;
             showOverlay(targetName, true);
+            if (mpIsHost) mpLandGrabClaim(mpMyPeerId, iso);
         } else {
             wrongCount++;
             document.getElementById('wrong-count').innerText = wrongCount;
             showOverlay(targetName, false);
-            g.selectAll(".country").filter(d => d === currentTarget).style("fill", null);
         }
 
-        mpRoundAnswered[mpMyPeerId] = true;
-
         if (mpIsHost) {
-            if (mpLandGrabRaceRound) {
-                if (correct) {
-                    mpCorrectAnswers.push({ peerId: mpMyPeerId, ts: Date.now() });
-                    if (!mpWinnerWindowTimer) {
-                        mpWinnerWindowTimer = setTimeout(mpLandGrabResolveRace, MP_WINNER_WINDOW_MS);
-                    }
-                } else {
-                    const allAnswered = Object.keys(mpPlayers).every(pid => mpRoundAnswered[pid]);
-                    if (allAnswered && !mpRaceResolved) setTimeout(mpLandGrabAdvance, 1200);
-                }
-            } else {
-                if (correct) mpLandGrabClaim(mpMyPeerId, iso);
-                mpLandGrabCheckRoundEnd();
-            }
+            // Small delay so the overlay is visible before next question loads.
+            setTimeout(() => mpLandGrabAssignNext(mpMyPeerId), correct ? 700 : 800);
         } else {
-            sendToHost({ type: 'answered', correct, iso, ts: Date.now() });
+            sendToHost({ type: 'answered', correct, iso });
         }
     },
 
@@ -156,71 +98,41 @@ const LandGrabMode = {
 
     onMessage(msg, fromId) {
         switch (msg.type) {
-            case 'land-grab-question': {
-                document.getElementById('remaining').innerText = msg.poolRemaining;
-                mpLandGrabPool = mpLandGrabPool.filter(c => !msg.claimed[c]);
-                mpLandGrabClaimed = msg.claimed || {};
-                mpLandGrabAssignments = msg.assignments;
-                mpLandGrabRaceRound = msg.raceRound;
-                const myIso = msg.assignments[mpMyPeerId];
-                const feature = myIso ? fullDataset.find(f => f.properties.ISO_A3 === myIso) : null;
-                currentTarget = feature || null;
-                canAnswer = false;
-                mpRaceResolved = false;
+            // Host receives a guest's answer → claim or skip, then immediately
+            // assign that guest their next question.
+            case 'answered': {
+                if (!mpIsHost) return;
+                if (msg.correct && msg.iso) mpLandGrabClaim(fromId, msg.iso);
+                setTimeout(() => mpLandGrabAssignNext(fromId), msg.correct ? 700 : 800);
+                break;
+            }
+
+            // Guest receives their next individual question from the host.
+            case 'land-grab-next': {
+                document.getElementById('remaining').innerText = msg.remaining;
                 if (!startTime) startTimer();
-                mpRenderLandGrabMap(msg.assignments, msg.claimed);
-                if (msg.raceRound) {
-                    sendToHost({ type: 'ack' });
-                } else {
+                const feature = msg.iso ? fullDataset.find(f => f.properties.ISO_A3 === msg.iso) : null;
+                currentTarget = feature || null;
+                if (currentTarget) {
                     renderQuestion();
+                } else {
+                    canAnswer = false;
+                    inputArea.classList.add('hidden');
+                    optionsGrid.classList.add('hidden');
                 }
                 break;
             }
 
+            // Broadcast keeping all players' remaining counter in sync.
+            case 'land-grab-pool':
+                document.getElementById('remaining').innerText = msg.remaining;
+                break;
+
+            // A country was claimed — color it for everyone.
             case 'land-grab-claimed':
-                mpLandGrabPool = mpLandGrabPool.filter(c => c !== msg.iso);
                 mpLandGrabClaimed[msg.iso] = msg.peerId;
                 mpColorCountry(msg.iso, mpPlayerColors[msg.peerId]);
                 break;
-
-            case 'go':
-                renderQuestion();
-                break;
-
-            case 'round-over': {
-                mpRaceResolved = true;
-                canAnswer = false;
-                if (msg.winner) mpColorCountry(msg.featureId, mpPlayerColors[msg.winner]);
-                const winnerName = msg.winner === mpMyPeerId ? 'You' :
-                                   msg.winner === null ? null :
-                                   (mpPlayers[msg.winner]?.name || 'Someone');
-                const isWin = msg.winner === mpMyPeerId;
-                const overlayText = msg.winner === null ? getCountryName(currentTarget) :
-                                    isWin ? getCountryName(currentTarget) :
-                                    `${winnerName} got it!`;
-                showOverlay(overlayText, isWin || msg.winner === null);
-                break;
-            }
-
-            case 'answered': {
-                if (!mpIsHost) return;
-                mpRoundAnswered[fromId] = true;
-                if (mpLandGrabRaceRound) {
-                    if (msg.correct && !mpRaceResolved) {
-                        mpCorrectAnswers.push({ peerId: fromId, ts: msg.ts || Date.now() });
-                        if (!mpWinnerWindowTimer) {
-                            mpWinnerWindowTimer = setTimeout(mpLandGrabResolveRace, MP_WINNER_WINDOW_MS);
-                        }
-                    } else if (!msg.correct && !mpRaceResolved) {
-                        const allAnswered = Object.keys(mpPlayers).every(pid => mpRoundAnswered[pid]);
-                        if (allAnswered) setTimeout(mpLandGrabAdvance, 1200);
-                    }
-                } else {
-                    if (msg.correct && msg.iso) mpLandGrabClaim(fromId, msg.iso);
-                    mpLandGrabCheckRoundEnd();
-                }
-                break;
-            }
         }
     },
 
