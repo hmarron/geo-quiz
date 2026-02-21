@@ -114,3 +114,6 @@ function installApp() {
 
 setMode(gameMode);
 init(); // start loading data in the background immediately
+
+const _autoJoinCode = new URLSearchParams(window.location.search).get('join');
+if (_autoJoinCode) startMultiplayer(_autoJoinCode.toUpperCase());

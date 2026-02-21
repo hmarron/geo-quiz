@@ -41,10 +41,15 @@ function mpGenCode() {
     return Array.from({length: 6}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
 }
 
-function startMultiplayer() {
+function startMultiplayer(autoJoinCode) {
     init(() => {
         mpRenderLobbySettings();
         document.getElementById('mp-lobby-modal').style.display = 'flex';
+        if (autoJoinCode) {
+            document.getElementById('mp-join-input').classList.remove('hidden');
+            document.getElementById('mp-code-input').value = autoJoinCode;
+            document.getElementById('mp-name-input').focus();
+        }
     });
 }
 
@@ -587,6 +592,16 @@ function copyRoomCode() {
         const btn = document.getElementById('btn-copy-code');
         btn.textContent = 'Copied!';
         setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+    });
+}
+
+function copyRoomLink() {
+    const code = document.getElementById('mp-room-code').textContent;
+    const url = window.location.origin + window.location.pathname + '?join=' + code;
+    navigator.clipboard.writeText(url).then(() => {
+        const btn = document.getElementById('btn-copy-link');
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = 'Copy Link'; }, 1500);
     });
 }
 
