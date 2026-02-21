@@ -533,6 +533,7 @@ function closeLobby() {
     if (connectBtn) { connectBtn.textContent = 'Connect'; connectBtn.disabled = false; }
     document.getElementById('mp-code-input').value = '';
     document.getElementById('start-screen').style.display = 'flex';
+    g.selectAll(".country").style("fill", d => isAllowed(d) ? COLOR_ACTIVE_FILL : COLOR_EXCLUDED_FILL);
     stopTimer();
 }
 
