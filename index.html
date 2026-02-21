@@ -184,6 +184,7 @@
                     <select id="mp-mode-select" class="flex-1 bg-slate-700 border border-slate-600 text-white text-sm rounded-lg px-2 py-1.5 outline-none">
                         <option value="race">Race (first correct wins)</option>
                         <option value="compete">High Score</option>
+                        <option value="land-grab">Land Grab</option>
                     </select>
                 </div>
 
@@ -263,8 +264,17 @@
         </div>
     </div>
 
+    <script src="utils.js"></script>
+    <script src="map.js"></script>
+    <script src="settings.js"></script>
+    <script src="scores.js"></script>
+    <script src="quiz.js"></script>
+    <script src="modes/solo.js"></script>
+    <script src="modes/race.js"></script>
+    <script src="modes/compete.js"></script>
+    <script src="modes/land-grab.js"></script>
+    <script src="mp/net.js"></script>
     <script src="app.js"></script>
-    <script src="mp.js"></script>
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('./sw.js');
