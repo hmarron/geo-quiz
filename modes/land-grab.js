@@ -15,7 +15,11 @@ function mpLandGrabAdvance() {
 
 // Host: assign the next country from the pool to a specific player.
 // If pool is empty, mark that player as done and check for game-over.
-function mpLandGrabAssignNext(peerId) {
+// wrongIso: pass the ISO of a wrong answer to recycle it back into the pool
+// so it will eventually be assigned to someone else (or the same player again).
+function mpLandGrabAssignNext(peerId, wrongIso = null) {
+    if (wrongIso) mpLandGrabPool.push(wrongIso);
+
     if (mpLandGrabPool.length === 0) {
         mpLandGrabAssignments[peerId] = null;
         mpLandGrabCheckAllDone();
@@ -86,7 +90,8 @@ const LandGrabMode = {
 
         if (mpIsHost) {
             // Small delay so the overlay is visible before next question loads.
-            setTimeout(() => mpLandGrabAssignNext(mpMyPeerId), correct ? 700 : 800);
+            // Pass wrong iso back so it re-enters the pool and eventually gets claimed.
+            setTimeout(() => mpLandGrabAssignNext(mpMyPeerId, correct ? null : iso), correct ? 700 : 800);
         } else {
             sendToHost({ type: 'answered', correct, iso });
         }
@@ -103,7 +108,8 @@ const LandGrabMode = {
             case 'answered': {
                 if (!mpIsHost) return;
                 if (msg.correct && msg.iso) mpLandGrabClaim(fromId, msg.iso);
-                setTimeout(() => mpLandGrabAssignNext(fromId), msg.correct ? 700 : 800);
+                const wrongIso = msg.correct ? null : (msg.iso || null);
+                setTimeout(() => mpLandGrabAssignNext(fromId, wrongIso), msg.correct ? 700 : 800);
                 break;
             }
 
