@@ -456,6 +456,11 @@ function showMpFinishModal(results) {
     stopTimer();
     inputArea.classList.add('hidden');
     optionsGrid.classList.add('hidden');
+    
+    // Clear any remaining highlights
+    if (activePlugin && typeof activePlugin.clearHighlights === 'function') {
+        activePlugin.clearHighlights();
+    }
 
     const winner = results[0];
     const titleEl = document.getElementById('mp-finish-title');

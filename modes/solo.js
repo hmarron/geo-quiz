@@ -18,6 +18,7 @@ const SoloMode = {
         pool = pool.filter(item => activePlugin.getItemId(item) !== activePlugin.getItemId(currentTarget));
         document.getElementById('remaining').innerText = pool.length;
         
+        activePlugin.clearHighlights();
         activePlugin.updateViewOnAnswer(currentTarget, correct);
 
         setTimeout(nextQuestion, correct ? 700 : 800);

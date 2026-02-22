@@ -74,6 +74,7 @@ const LandGrabMode = {
         const isLastClaim = Object.keys(this.claimed).length === mpQuestionPool.length;
 
         if (typeof activePlugin.colorItem === 'function') {
+            activePlugin.clearHighlights(); // Clear the yellow highlight from the item being claimed
             activePlugin.colorItem(iso, mpPlayerColors[peerId]);
         }
 

@@ -76,6 +76,7 @@ const RaceMode = {
 
                 // 1. Color the map for all players
                 if (msg.winner && typeof activePlugin.colorItem === 'function') {
+                    activePlugin.clearHighlights(); // Clear the yellow highlight
                     activePlugin.colorItem(msg.itemId, mpPlayerColors[msg.winner]);
                 }
 

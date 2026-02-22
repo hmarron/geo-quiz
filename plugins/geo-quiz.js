@@ -254,10 +254,14 @@ class GeoQuizPlugin {
   }
 
   resetView() {
-    this.g.selectAll(".country")
-        .classed("country-highlight", false);
+    this.clearHighlights();
     this.updateSettings(activeSettings); // Re-apply styles
     this.resetZoom();
+  }
+
+  clearHighlights() {
+    this.g.selectAll(".country")
+        .classed("country-highlight", false);
   }
 
   // Map specific helpers
