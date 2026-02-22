@@ -1,61 +1,96 @@
 // ─── MP High Score (compete) mode object ─────────────────────────────────────
+// Each player progresses through the same question list at their own pace.
+
+let competeQuestionIdx = 0;
 
 const CompeteMode = {
     onAnswer(correct) {
-        if (!canAnswer) return;
-        const targetName = activePlugin.getCorrectAnswer(currentTarget);
         canAnswer = false;
+        const targetName = activePlugin.getCorrectAnswer(currentTarget);
+        
         if (correct) {
             score++;
             document.getElementById('score').innerText = score;
             activePlugin.showOverlay(targetName, true);
-            activePlugin.updateViewOnAnswer(currentTarget, true);
         } else {
             wrongCount++;
             document.getElementById('wrong-count').innerText = wrongCount;
             activePlugin.showOverlay(targetName, false);
-            activePlugin.updateViewOnAnswer(currentTarget, false);
         }
-        if (mpIsHost) {
-            mpPlayers[mpMyPeerId].score = score;
-            mpPlayers[mpMyPeerId].wrong = wrongCount;
-            mpRoundAnswered[mpMyPeerId] = true;
-            broadcast({ type: 'player-score', peerId: mpMyPeerId, score, wrong: wrongCount });
-            const allAnswered = Object.keys(mpPlayers).every(pid => mpRoundAnswered[pid]);
-            if (allAnswered) setTimeout(mpAdvance, 900);
-        } else {
-            sendToHost({ type: 'answered', correct, score, wrong: wrongCount });
-            sendToHost({ type: 'score-update', score, wrong: wrongCount });
-        }
+
+        // In Compete mode, the host just acts as a scoreboard relay.
+        // The client is responsible for its own progress.
+        sendToHost({ type: 'score-update', score, wrong: wrongCount });
+
+        // Advance to the next question locally
+        setTimeout(() => this.next(), 700);
     },
 
-    onDone() {},
-    onReset() {},
-    onHome() { mpGoHome(); },
+    next() {
+        competeQuestionIdx++;
+        if (competeQuestionIdx >= mpQuestionPool.length) {
+            this.onDone();
+            return;
+        }
+        
+        const itemId = mpQuestionPool[competeQuestionIdx];
+        mpSetQuestion(itemId);
+        renderQuestion();
+        document.getElementById('remaining').innerText = mpQuestionPool.length - competeQuestionIdx;
+    },
+
+    onDone() {
+        canAnswer = false;
+        inputArea.classList.add('hidden');
+        optionsGrid.classList.add('hidden');
+        activePlugin.resetView();
+        sendToHost({ type: 'finished-compete' });
+        mpShowToast('You finished! Waiting for other players...');
+    },
+
+    onReset() {
+        // This mode is not used in a context where reset is meaningful
+    },
+
+    onHome() { 
+        mpGoHome(); 
+    },
 
     onMessage(msg, fromId) {
         switch (msg.type) {
-            case 'question':
-                // Compete mode renders immediately on 'question' (no ack/go needed)
-                renderQuestion();
-                break;
-
-            case 'answered': {
+            case 'finished-compete': {
                 if (!mpIsHost) return;
-                mpRoundAnswered[fromId] = true;
-                if (msg.score !== undefined) {
-                    mpPlayers[fromId].score = msg.score;
-                    mpPlayers[fromId].wrong = msg.wrong;
-                    broadcast({ type: 'player-score', peerId: fromId, score: msg.score, wrong: msg.wrong });
+                mpCompeteFinished[fromId] = true;
+                
+                // Check if all players are done
+                const allDone = Object.keys(mpPlayers).every(pid => mpCompeteFinished[pid]);
+                if (allDone) {
+                    const results = Object.entries(mpPlayers).map(([pid, p]) => ({
+                        peerId: pid, name: p.name, score: p.score, wrong: p.wrong,
+                    }));
+                    results.sort((a, b) => b.score - a.score);
+                    broadcast({ type: 'game-over', results });
+                    showMpFinishModal(results);
                 }
-                const allAnswered = Object.keys(mpPlayers).every(pid => mpRoundAnswered[pid]);
-                if (allAnswered) setTimeout(mpAdvance, 900);
                 break;
             }
         }
     },
 
     start() {
-        mpAdvance();
+        competeQuestionIdx = 0;
+        mpCompeteFinished = {};
+        Object.keys(mpPlayers).forEach(pid => {
+            mpCompeteFinished[pid] = false;
+        });
+        
+        if (mpQuestionPool.length > 0) {
+            const itemId = mpQuestionPool[competeQuestionIdx];
+            mpSetQuestion(itemId);
+            renderQuestion();
+            document.getElementById('remaining').innerText = mpQuestionPool.length;
+        } else {
+            this.onDone();
+        }
     },
 };

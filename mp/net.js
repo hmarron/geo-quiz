@@ -8,11 +8,13 @@ let mpIsActive = false;
 let mpPlayers = {};         // { peerId: { name, score, wrong } }
 let mpRoundAnswered = {};   // { peerId: bool }
 let mpQuestionPool = [];    // Ordered question IDs (host-generated)
-let mpQuestionIdx = 0;
+let mpQuestionIdx = 0;      // Used by Race mode
 let mpLocalName = 'You';
 let mpMyPeerId = null;
 let mpPlayerColors = {};    // { peerId: '#hex' }
 let mpRoundAcked = {};      // { peerId: bool } — who has acked current question
+let mpFinalAck = {};        // { peerId: bool } - who has acked the final round
+let mpCompeteFinished = {}; // { peerId: bool } - who has finished in compete mode
 let mpAckTimeout = null;    // timeout handle for ack wait
 
 const MP_ACK_TIMEOUT_MS = 3000;
@@ -217,7 +219,7 @@ function handleMpMessage(msg, fromId) {
         case 'question':
             if (msg.remaining !== undefined) document.getElementById('remaining').innerText = msg.remaining;
             mpSetQuestion(msg.itemId);
-            activeMode.onMessage(msg, fromId);  // CompeteMode renders immediately; RaceMode waits for 'go'
+            activeMode.onMessage(msg, fromId);
             break;
 
         case 'ack':
@@ -244,12 +246,27 @@ function handleMpMessage(msg, fromId) {
 
         case 'player-left': {
             const leftName = mpPlayers[msg.peerId]?.name || 'A player';
-            delete mpPlayers[msg.peerId];
-            delete mpRoundAnswered[msg.peerId];
-            mpShowToast(leftName + ' left the game');
-            if (mpIsHost && mpMode === 'compete') {
-                const allAnswered = Object.keys(mpPlayers).every(pid => mpRoundAnswered[pid]);
-                if (allAnswered && Object.keys(mpPlayers).length > 0) setTimeout(mpAdvance, 900);
+            delete mpConns[peerId];
+            delete mpPlayers[peerId];
+            delete mpRoundAnswered[peerId];
+            delete mpRoundAcked[peerId];
+            broadcast({ type: 'player-left', peerId });
+            mpShowToast(`${name} left the game`);
+            if (mpIsActive) {
+                if (mpMode === 'race') {
+                    mpCheckAllAcked();
+                } else if (mpMode === 'compete') {
+                    if (mpCompeteFinished[peerId]) delete mpCompeteFinished[peerId];
+                    const allDone = Object.keys(mpPlayers).every(pid => mpCompeteFinished[pid]);
+                    if (allDone && Object.keys(mpPlayers).length > 0) {
+                        const results = Object.entries(mpPlayers).map(([pid, p]) => ({
+                            peerId: pid, name: p.name, score: p.score, wrong: p.wrong,
+                        }));
+                        results.sort((a, b) => b.score - a.score);
+                        broadcast({ type: 'game-over', results });
+                        showMpFinishModal(results);
+                    }
+                }
             }
             break;
         }
@@ -258,6 +275,8 @@ function handleMpMessage(msg, fromId) {
         case 'go':
         case 'answered':
         case 'round-over':
+        case 'final-round-processed':
+        case 'finished-compete':
         case 'land-grab-question':
         case 'land-grab-claimed':
         case 'land-grab-next':
@@ -283,6 +302,10 @@ function mpSetQuestion(itemId) {
 
 function mpAdvance() {
     if (!mpIsHost) return;
+
+    // This function is now only used for Race mode's lock-step progression.
+    if (mpMode !== 'race') return;
+
     if (mpQuestionIdx >= mpQuestionPool.length) {
         const results = Object.entries(mpPlayers).map(([pid, p]) => ({
             peerId: pid,
@@ -310,16 +333,14 @@ function mpAdvance() {
     document.getElementById('remaining').innerText = remaining;
     broadcast({ type: 'question', itemId, remaining });
     mpSetQuestion(itemId);
-    if (mpMode === 'compete') {
+    
+    // Race mode waits for acks before rendering question via 'go' message
+    mpAckTimeout = setTimeout(() => {
+        mpAckTimeout = null;
+        broadcast({ type: 'go' });
         renderQuestion();
-    } else {
-        mpAckTimeout = setTimeout(() => {
-            mpAckTimeout = null;
-            broadcast({ type: 'go' });
-            renderQuestion();
-        }, MP_ACK_TIMEOUT_MS);
-        mpHandleAck(mpMyPeerId);
-    }
+    }, MP_ACK_TIMEOUT_MS);
+    mpHandleAck(mpMyPeerId);
 }
 
 function mpHandleAck(peerId) {
@@ -349,8 +370,6 @@ function mpApplySettings(msg) {
     else if (msg.mpMode === 'compete') activeMode = CompeteMode;
     else if (msg.mpMode === 'land-grab') activeMode = LandGrabMode;
     
-    // TODO: This assumes the geo-quiz plugin. This should be more generic.
-    // For now, we update the global activeSettings and have the plugin use that.
     activeSettings.regions = msg.settings.regions;
     activeSettings.showBorders = msg.settings.showBorders;
     activeSettings.gameMode = msg.settings.gameMode;
@@ -381,7 +400,8 @@ function mpApplySettings(msg) {
     document.getElementById('score').innerText = 0;
     document.getElementById('wrong-count').innerText = 0;
     document.getElementById('timer').textContent = '0:00';
-    // Guests wait for first 'question' (or 'land-grab-question') message
+    
+    activeMode.start();
 }
 
 function mpStartGame() {
@@ -391,7 +411,6 @@ function mpStartGame() {
     else if (mpMode === 'compete') activeMode = CompeteMode;
     else if (mpMode === 'land-grab') activeMode = LandGrabMode;
 
-    // Update settings from the lobby UI
     for (const regionId in activeSettings.regions) {
         const regionCheckbox = document.getElementById(`mp-check-${regionId}`);
         if (regionCheckbox) {
@@ -445,9 +464,6 @@ function showMpFinishModal(results) {
     stopTimer();
     inputArea.classList.add('hidden');
     optionsGrid.classList.add('hidden');
-    if (typeof activePlugin.resetView === 'function') {
-        activePlugin.resetView();
-    }
 
     const winner = results[0];
     const titleEl = document.getElementById('mp-finish-title');
@@ -519,6 +535,8 @@ function closeLobby() {
     mpRoundAnswered = {};
     mpRoundAcked = {};
     mpCorrectAnswers = [];
+    mpFinalAck = {};
+    mpCompeteFinished = {};
     mpQuestionPool = [];
     mpQuestionIdx = 0;
     mpMyPeerId = null;
@@ -558,9 +576,17 @@ function mpHandleDisconnect(peerId) {
     if (mpIsActive) {
         if (mpMode === 'race') {
             mpCheckAllAcked();
-        } else if (mpMode === 'compete' && Object.keys(mpPlayers).length > 0) {
-            const allAnswered = Object.keys(mpPlayers).every(pid => mpRoundAnswered[pid]);
-            if (allAnswered) setTimeout(mpAdvance, 900);
+        } else if (mpMode === 'compete') {
+            if (mpCompeteFinished[peerId]) delete mpCompeteFinished[peerId];
+            const allDone = Object.keys(mpPlayers).every(pid => mpCompeteFinished[pid]);
+            if (allDone && Object.keys(mpPlayers).length > 0) {
+                const results = Object.entries(mpPlayers).map(([pid, p]) => ({
+                    peerId: pid, name: p.name, score: p.score, wrong: p.wrong,
+                }));
+                results.sort((a, b) => b.score - a.score);
+                broadcast({ type: 'game-over', results });
+                showMpFinishModal(results);
+            }
         }
     }
 }

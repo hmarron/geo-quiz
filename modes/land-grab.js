@@ -101,7 +101,6 @@ function mpLandGrabClaim(peerId, iso) {
 
 const LandGrabMode = {
     onAnswer(correct) {
-        if (!canAnswer) return;
         const targetName = activePlugin.getCorrectAnswer(currentTarget);
         const iso = activePlugin.getItemId(currentTarget);
         canAnswer = false;
