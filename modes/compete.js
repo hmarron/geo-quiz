@@ -3,16 +3,18 @@
 const CompeteMode = {
     onAnswer(correct) {
         if (!canAnswer) return;
-        const targetName = getCountryName(currentTarget);
+        const targetName = activePlugin.getCorrectAnswer(currentTarget);
         canAnswer = false;
         if (correct) {
             score++;
             document.getElementById('score').innerText = score;
-            showOverlay(targetName, true);
+            activePlugin.showOverlay(targetName, true);
+            activePlugin.updateViewOnAnswer(currentTarget, true);
         } else {
             wrongCount++;
             document.getElementById('wrong-count').innerText = wrongCount;
-            showOverlay(targetName, false);
+            activePlugin.showOverlay(targetName, false);
+            activePlugin.updateViewOnAnswer(currentTarget, false);
         }
         if (mpIsHost) {
             mpPlayers[mpMyPeerId].score = score;

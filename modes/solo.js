@@ -10,10 +10,14 @@ const SoloMode = {
             wrongCount++;
             document.getElementById('wrong-count').innerText = wrongCount;
         }
-        const name = getCountryName(currentTarget);
-        showOverlay(name, correct);
-        pool = pool.filter(c => getCountryName(c) !== name);
+        const name = activePlugin.getCorrectAnswer(currentTarget);
+        activePlugin.showOverlay(name, correct);
+        // Remove the answered item from the pool
+        pool = pool.filter(item => activePlugin.getItemId(item) !== activePlugin.getItemId(currentTarget));
         document.getElementById('remaining').innerText = pool.length;
+        
+        activePlugin.updateViewOnAnswer(currentTarget, correct);
+
         setTimeout(nextQuestion, correct ? 700 : 800);
     },
 
@@ -31,8 +35,11 @@ const SoloMode = {
         document.getElementById('wrong-count').innerText = 0;
         document.getElementById('timer').textContent = '0:00';
         document.getElementById('finish-modal').style.display = 'none';
-        pool = fullDataset.filter(isAllowed);
+        
+        pool = activePlugin.generateQuestionPool(activeSettings);
         document.getElementById('remaining').innerText = pool.length;
+        
+        activePlugin.resetView();
         nextQuestion();
     },
 

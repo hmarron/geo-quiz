@@ -10,14 +10,18 @@ function mpResolveRound(winnerPeerId) {
     if (mpWinnerWindowTimer) { clearTimeout(mpWinnerWindowTimer); mpWinnerWindowTimer = null; }
     mpRaceResolved = true;
     canAnswer = false;
-    const featureId = currentTarget?.properties?.ISO_A3;
-    broadcast({ type: 'round-over', winner: winnerPeerId, featureId });
-    if (winnerPeerId) mpColorCountry(featureId, mpPlayerColors[winnerPeerId]);
+    const itemId = activePlugin.getItemId(currentTarget);
+    broadcast({ type: 'round-over', winner: winnerPeerId, itemId });
+    
+    if (winnerPeerId && typeof activePlugin.colorItem === 'function') {
+        activePlugin.colorItem(itemId, mpPlayerColors[winnerPeerId]);
+    }
+
     if (winnerPeerId !== mpMyPeerId) {
-        const targetName = getCountryName(currentTarget);
+        const targetName = activePlugin.getCorrectAnswer(currentTarget);
         const winnerName = winnerPeerId === null ? null : (mpPlayers[winnerPeerId]?.name || 'Someone');
         const text = winnerPeerId === null ? targetName : `${winnerName} got it!`;
-        showOverlay(text, false);
+        activePlugin.showOverlay(text, false);
     }
     if (winnerPeerId && winnerPeerId !== mpMyPeerId && mpPlayers[winnerPeerId]) {
         mpPlayers[winnerPeerId].score++;
@@ -29,12 +33,12 @@ function mpResolveRound(winnerPeerId) {
 const RaceMode = {
     onAnswer(correct) {
         if (!canAnswer) return;
-        const targetName = getCountryName(currentTarget);
+        const targetName = activePlugin.getCorrectAnswer(currentTarget);
         if (correct) {
             canAnswer = false;
             score++;
             document.getElementById('score').innerText = score;
-            showOverlay(targetName, true);
+            activePlugin.showOverlay(targetName, true);
             if (mpIsHost) {
                 mpCorrectAnswers.push({ peerId: mpMyPeerId, ts: Date.now() });
                 mpRoundAnswered[mpMyPeerId] = true;
@@ -54,7 +58,7 @@ const RaceMode = {
             canAnswer = false;
             wrongCount++;
             document.getElementById('wrong-count').innerText = wrongCount;
-            showOverlay(targetName, false);
+            activePlugin.showOverlay(targetName, false);
             if (mpIsHost) {
                 mpRoundAnswered[mpMyPeerId] = true;
                 const allAnswered = Object.keys(mpPlayers).every(pid => mpRoundAnswered[pid]);
@@ -78,15 +82,17 @@ const RaceMode = {
             case 'round-over': {
                 mpRaceResolved = true;
                 canAnswer = false;
-                if (msg.winner) mpColorCountry(msg.featureId, mpPlayerColors[msg.winner]);
+                if (msg.winner && typeof activePlugin.colorItem === 'function') {
+                    activePlugin.colorItem(msg.itemId, mpPlayerColors[msg.winner]);
+                }
                 const winnerName = msg.winner === mpMyPeerId ? 'You' :
                                    msg.winner === null ? null :
                                    (mpPlayers[msg.winner]?.name || 'Someone');
                 const isWin = msg.winner === mpMyPeerId;
-                const overlayText = msg.winner === null ? getCountryName(currentTarget) :
-                                    isWin ? getCountryName(currentTarget) :
+                const overlayText = msg.winner === null ? activePlugin.getCorrectAnswer(currentTarget) :
+                                    isWin ? activePlugin.getCorrectAnswer(currentTarget) :
                                     `${winnerName} got it!`;
-                showOverlay(overlayText, isWin || msg.winner === null);
+                activePlugin.showOverlay(overlayText, isWin || msg.winner === null);
                 break;
             }
 

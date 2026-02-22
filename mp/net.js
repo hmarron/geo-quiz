@@ -7,7 +7,7 @@ let mpMode = null;          // 'race' | 'compete' | 'land-grab'
 let mpIsActive = false;
 let mpPlayers = {};         // { peerId: { name, score, wrong } }
 let mpRoundAnswered = {};   // { peerId: bool }
-let mpQuestionPool = [];    // Ordered ISO A3 codes (host-generated)
+let mpQuestionPool = [];    // Ordered question IDs (host-generated)
 let mpQuestionIdx = 0;
 let mpLocalName = 'You';
 let mpMyPeerId = null;
@@ -216,7 +216,7 @@ function handleMpMessage(msg, fromId) {
 
         case 'question':
             if (msg.remaining !== undefined) document.getElementById('remaining').innerText = msg.remaining;
-            mpSetQuestion(msg.featureId);
+            mpSetQuestion(msg.itemId);
             activeMode.onMessage(msg, fromId);  // CompeteMode renders immediately; RaceMode waits for 'go'
             break;
 
@@ -269,10 +269,10 @@ function handleMpMessage(msg, fromId) {
 
 // ─── Host: advance to next question ──────────────────────────────────────────
 
-function mpSetQuestion(featureId) {
-    const feature = fullDataset.find(f => f.properties.ISO_A3 === featureId);
-    if (!feature) return;
-    currentTarget = feature;
+function mpSetQuestion(itemId) {
+    const item = activePlugin.getItemById(itemId);
+    if (!item) return;
+    currentTarget = item;
     canAnswer = false;
     mpRaceResolved = false;
     if (!startTime) startTimer();
@@ -298,7 +298,7 @@ function mpAdvance() {
         showMpFinishModal(results);
         return;
     }
-    const featureId = mpQuestionPool[mpQuestionIdx];
+    const itemId = mpQuestionPool[mpQuestionIdx];
     mpQuestionIdx++;
     mpRoundAnswered = {};
     Object.keys(mpPlayers).forEach(pid => { mpRoundAnswered[pid] = false; });
@@ -308,8 +308,8 @@ function mpAdvance() {
     mpCorrectAnswers = [];
     const remaining = mpQuestionPool.length - mpQuestionIdx;
     document.getElementById('remaining').innerText = remaining;
-    broadcast({ type: 'question', featureId, remaining });
-    mpSetQuestion(featureId);
+    broadcast({ type: 'question', itemId, remaining });
+    mpSetQuestion(itemId);
     if (mpMode === 'compete') {
         renderQuestion();
     } else {
@@ -348,19 +348,20 @@ function mpApplySettings(msg) {
     if (msg.mpMode === 'race') activeMode = RaceMode;
     else if (msg.mpMode === 'compete') activeMode = CompeteMode;
     else if (msg.mpMode === 'land-grab') activeMode = LandGrabMode;
-    if (msg.mpMode === 'land-grab') {
-        mpLandGrabPool = msg.questionPool.slice();
-        mpLandGrabClaimed = {};
-        mpLandGrabAssignments = {};
+    
+    // TODO: This assumes the geo-quiz plugin. This should be more generic.
+    // For now, we update the global activeSettings and have the plugin use that.
+    activeSettings.regions = msg.settings.regions;
+    activeSettings.showBorders = msg.settings.showBorders;
+    activeSettings.gameMode = msg.settings.gameMode;
+    
+    if (typeof activePlugin.updateSettings === 'function') {
+        activePlugin.updateSettings(activeSettings);
     }
-    regions.forEach(r => { r.active = msg.regions.includes(r.id); });
-    g.selectAll(".country")
-        .attr("class", d => isAllowed(d) ? "country" : "country country-excluded")
-        .style("fill", d => isAllowed(d) ? COLOR_ACTIVE_FILL : COLOR_EXCLUDED_FILL);
-    gameMode = msg.gameMode;
-    setMode(gameMode);
-    pool = fullDataset.filter(isAllowed);
+    
+    pool = activePlugin.generateQuestionPool(activeSettings);
     document.getElementById('remaining').innerText = pool.length;
+
     if (msg.players) {
         Object.entries(msg.players).forEach(([pid, p]) => {
             const name = typeof p === 'object' ? p.name : p;
@@ -390,19 +391,12 @@ function mpStartGame() {
     else if (mpMode === 'compete') activeMode = CompeteMode;
     else if (mpMode === 'land-grab') activeMode = LandGrabMode;
 
-    regions.forEach(r => {
-        const cb = document.getElementById(`mp-check-${r.id}`);
-        if (cb) r.active = cb.checked;
-    });
-    g.selectAll(".country")
-        .attr("class", d => isAllowed(d) ? "country" : "country country-excluded")
-        .style("fill", d => isAllowed(d) ? COLOR_ACTIVE_FILL : COLOR_EXCLUDED_FILL);
-    pool = fullDataset.filter(isAllowed);
-    document.getElementById('remaining').innerText = pool.length;
+    // Update settings from the lobby UI
+    applySettings(false); // false = don't restart a single player game
 
-    const activePool = fullDataset.filter(isAllowed);
-    const shuffled = activePool.slice().sort(() => Math.random() - 0.5);
-    mpQuestionPool = shuffled.map(f => f.properties.ISO_A3).filter(Boolean);
+    const questionPoolItems = activePlugin.generateQuestionPool(activeSettings);
+    const shuffled = questionPoolItems.slice().sort(() => Math.random() - 0.5);
+    mpQuestionPool = shuffled.map(item => activePlugin.getItemId(item)).filter(Boolean);
     mpQuestionIdx = 0;
 
     if (mpMode === 'land-grab') {
@@ -418,8 +412,8 @@ function mpStartGame() {
 
     broadcast({
         type: 'game-start',
-        gameMode,
-        regions: regions.filter(r => r.active).map(r => r.id),
+        pluginId: activePlugin.id,
+        settings: activeSettings,
         mpMode,
         questionPool: mpQuestionPool,
         players: playerData,
@@ -445,7 +439,9 @@ function showMpFinishModal(results) {
     stopTimer();
     inputArea.classList.add('hidden');
     optionsGrid.classList.add('hidden');
-    g.selectAll(".country").classed("country-highlight", false);
+    if (typeof activePlugin.resetView === 'function') {
+        activePlugin.resetView();
+    }
 
     const winner = results[0];
     const titleEl = document.getElementById('mp-finish-title');
@@ -538,7 +534,9 @@ function closeLobby() {
     if (connectBtn) { connectBtn.textContent = 'Connect'; connectBtn.disabled = false; }
     document.getElementById('mp-code-input').value = '';
     document.getElementById('start-screen').style.display = 'flex';
-    g.selectAll(".country").style("fill", d => isAllowed(d) ? COLOR_ACTIVE_FILL : COLOR_EXCLUDED_FILL);
+    if (typeof activePlugin.updateSettings === 'function') {
+        activePlugin.updateSettings(activeSettings);
+    }
     stopTimer();
 }
 

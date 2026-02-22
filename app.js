@@ -5,7 +5,8 @@ let wrongCount = 0;
 let hintCount = 0;
 let startTime = null;
 let timerInterval = null;
-let fullDataset = [];
+
+const activePlugin = new GeoQuizPlugin();
 let activeMode = SoloMode;  // default; set by startSinglePlayer() or mpStartGame()
 
 let dataReady = false;
@@ -18,24 +19,22 @@ async function init(andThen) {
         return;
     }
     dataLoading = true;
+    document.getElementById('loader-text').innerText = `Loading ${activePlugin.name}...`;
+
     try {
-        const response = await fetch('https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_countries.geojson');
-        const data = await response.json();
-        fullDataset = data.features;
+        await activePlugin.loadScripts();
+        await activePlugin.loadData();
+        
+        const quizViewContainer = document.getElementById('quiz-view-container');
+        activePlugin.renderQuizView(quizViewContainer);
+        activePlugin.bindUIEvents();
 
-        renderSettings();
-        updateActiveLabel();
-        pool = fullDataset.filter(isAllowed);
+        renderSettings(); // Renders UI controls for settings
+        updateActiveLabel(); // Updates the "Xx countries active" label
+
+        // Generate the initial pool based on default settings
+        pool = activePlugin.generateQuestionPool(activeSettings);
         document.getElementById('remaining').innerText = pool.length;
-
-        g.selectAll("path")
-            .data(fullDataset)
-            .enter()
-            .append("path")
-            .attr("d", path)
-            .attr("class", d => isAllowed(d) ? "country" : "country country-excluded")
-            .style("stroke", showBorders ? COLOR_BORDER : "none")
-            .style("fill", d => isAllowed(d) ? COLOR_ACTIVE_FILL : COLOR_EXCLUDED_FILL);
 
         answerInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') checkTypedAnswer();
@@ -45,7 +44,7 @@ async function init(andThen) {
         document.getElementById('loader').style.display = 'none';
         if (andThen) andThen();
     } catch (err) {
-        console.error("Error loading map:", err);
+        console.error("Error loading plugin or data:", err);
         dataLoading = false;
     }
 }
@@ -66,6 +65,11 @@ function resetGame() {
     activeMode.onReset();
 }
 
+function playAgain() {
+    document.getElementById('finish-modal').style.display = 'none';
+    toggleSettings();
+}
+
 function goHome() {
     activeMode.onHome();
 }
@@ -73,7 +77,8 @@ function goHome() {
 function startSinglePlayer() {
     activeMode = SoloMode;
     document.getElementById('start-screen').style.display = 'none';
-    init(() => resetGame());
+    // Initialize the app and plugin, then show settings before starting the first game.
+    init(() => toggleSettings());
 }
 
 // ─── Viewport height sync ─────────────────────────────────────────────────────
@@ -112,8 +117,8 @@ function installApp() {
 
 // ─── Bootstrap ────────────────────────────────────────────────────────────────
 
-setMode(gameMode);
-init(); // start loading data in the background immediately
+setMode(activeSettings.gameMode); // From settings.js, sets 'easy' or 'hard'
+init(); // Start loading data in the background immediately
 
 const _autoJoinCode = new URLSearchParams(window.location.search).get('join');
 if (_autoJoinCode) startMultiplayer(_autoJoinCode.toUpperCase());

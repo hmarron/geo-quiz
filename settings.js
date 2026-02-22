@@ -1,61 +1,67 @@
 // ─── Regions, settings UI, gameMode ──────────────────────────────────────────
 
-const regions = [
-    { id: 'north-america', label: 'North America', active: true },
-    { id: 'south-america', label: 'South America', active: true },
-    { id: 'europe', label: 'Europe', active: true },
-    { id: 'asia', label: 'Asia', active: true },
-    { id: 'africa-north', label: 'Africa: Above Equator', active: true },
-    { id: 'africa-south', label: 'Africa: Below Equator', active: false },
-    { id: 'oceania', label: 'Oceania', active: false }
-];
-
-let showBorders = true;
-let gameMode = 'easy';
+// This object defines the shape of the settings.
+// The plugin is responsible for providing the UI and handling these values.
+const activeSettings = {
+    gameMode: 'easy',
+    showBorders: true,
+    regions: {
+        'north-america': true,
+        'south-america': true,
+        'europe': true,
+        'asia': true,
+        'africa-north': true,
+        'africa-south': false,
+        'oceania': false,
+    }
+};
 
 const settingsModal = document.getElementById('settings-modal');
 
-function isAllowed(feature) {
-    const rId = getCountryRegionId(feature);
-    const r = regions.find(x => x.id === rId);
-    return r ? r.active : false;
-}
-
 function renderSettings() {
-    const container = document.getElementById('region-toggles');
-    container.innerHTML = regions.map(r => `
-        <label class="flex items-center gap-3 p-3 bg-slate-700/50 rounded-xl cursor-pointer hover:bg-slate-700 transition-colors">
-            <input type="checkbox" id="check-${r.id}" ${r.active ? 'checked' : ''}
-                   class="w-5 h-5 rounded border-slate-600 bg-slate-800 text-blue-500 focus:ring-blue-500">
-            <span class="text-sm font-medium text-slate-200">${r.label}</span>
-        </label>
-    `).join('');
+    const container = document.getElementById('plugin-settings-container');
+    if (typeof activePlugin.getSettingsView === 'function') {
+        container.innerHTML = activePlugin.getSettingsView();
+    } else {
+        container.innerHTML = '';
+    }
 }
 
 function setMode(mode) {
-    gameMode = mode;
+    activeSettings.gameMode = mode;
     document.getElementById('mode-hard').classList.toggle('mode-btn-active', mode === 'hard');
     document.getElementById('mode-easy').classList.toggle('mode-btn-active', mode === 'easy');
 }
 
 function toggleSettings() {
+    // Re-render settings each time the modal is opened to ensure they are fresh
+    renderSettings();
     settingsModal.style.display = settingsModal.style.display === 'flex' ? 'none' : 'flex';
 }
 
 function applySettings(startNew = true) {
-    showBorders = document.getElementById('check-borders').checked;
-    regions.forEach(r => {
-        const cb = document.getElementById(`check-${r.id}`);
-        if (cb) r.active = cb.checked;
-    });
+    // Update activeSettings from the UI elements provided by the plugin
+    const bordersCheckbox = document.getElementById('check-borders');
+    if (bordersCheckbox) {
+        activeSettings.showBorders = bordersCheckbox.checked;
+    }
 
-    pool = fullDataset.filter(isAllowed);
+    // The plugin knows about its own regions
+    for (const regionId in activeSettings.regions) {
+        const regionCheckbox = document.getElementById(`check-${regionId}`);
+        if (regionCheckbox) {
+            activeSettings.regions[regionId] = regionCheckbox.checked;
+        }
+    }
+
+    // The plugin is responsible for updating the game's visual state
+    if (typeof activePlugin.updateSettings === 'function') {
+        activePlugin.updateSettings(activeSettings);
+    }
+
+    // The main app is responsible for regenerating the question pool
+    pool = activePlugin.generateQuestionPool(activeSettings);
     document.getElementById('remaining').innerText = pool.length;
-
-    g.selectAll(".country")
-        .attr("class", d => isAllowed(d) ? "country" : "country country-excluded")
-        .style("stroke", showBorders ? COLOR_BORDER : "none")
-        .style("fill", d => isAllowed(d) ? COLOR_ACTIVE_FILL : COLOR_EXCLUDED_FILL);
 
     updateActiveLabel();
     toggleSettings();
@@ -63,28 +69,58 @@ function applySettings(startNew = true) {
 }
 
 function updateActiveLabel() {
-    const activeNames = regions.filter(r => r.active).map(r => r.label);
-    document.getElementById('active-regions-label').innerText = activeNames.length > 0 ? activeNames.join(', ') : 'None selected';
+    // This is still somewhat geo-specific. A future refactor could move this
+    // into the plugin as well, e.g. `plugin.getActiveItemsDescription()`.
+    const regionLabels = {
+        'north-america': 'North America',
+        'south-america': 'South America',
+        'europe': 'Europe',
+        'asia': 'Asia',
+        'africa-north': 'Africa: Above Equator',
+        'africa-south': 'Africa: Below Equator',
+        'oceania': 'Oceania',
+    };
+    const activeNames = Object.keys(activeSettings.regions)
+        .filter(r => activeSettings.regions[r])
+        .map(r => regionLabels[r]);
+    
+    const label = document.getElementById('active-regions-label');
+    if(activeNames.length > 0 && activeNames.length < Object.keys(regionLabels).length) {
+        label.innerText = activeNames.join(', ');
+        label.classList.remove('hidden');
+    } else {
+        label.classList.add('hidden');
+    }
 }
 
 // ─── MP lobby settings (from mp.js) ──────────────────────────────────────────
 
 function mpRenderLobbySettings() {
+    // This also needs to be driven by the plugin in the future.
+    // For now, it will still work as long as the geo-quiz plugin is active.
+    const regionLabels = {
+        'north-america': 'North America',
+        'south-america': 'South America',
+        'europe': 'Europe',
+        'asia': 'Asia',
+        'africa-north': 'Africa: Above Equator',
+        'africa-south': 'Africa: Below Equator',
+        'oceania': 'Oceania',
+    };
     const container = document.getElementById('mp-region-toggles');
-    container.innerHTML = regions.map(r => `
+    container.innerHTML = Object.keys(regionLabels).map(rId => `
         <label class="flex items-center gap-2 p-2 bg-slate-700/50 rounded-lg cursor-pointer hover:bg-slate-700 transition-colors">
-            <input type="checkbox" id="mp-check-${r.id}" ${r.active ? 'checked' : ''}
+            <input type="checkbox" id="mp-check-${rId}" ${activeSettings.regions[rId] ? 'checked' : ''}
                    class="w-4 h-4 rounded border-slate-600 bg-slate-800 text-blue-500 focus:ring-blue-500">
-            <span class="text-xs font-medium text-slate-200">${r.label}</span>
+            <span class="text-xs font-medium text-slate-200">${regionLabels[rId]}</span>
         </label>
     `).join('');
-    document.getElementById('mp-btn-hard').classList.toggle('mode-btn-active', gameMode === 'hard');
-    document.getElementById('mp-btn-easy').classList.toggle('mode-btn-active', gameMode === 'easy');
+    document.getElementById('mp-btn-hard').classList.toggle('mode-btn-active', activeSettings.gameMode === 'hard');
+    document.getElementById('mp-btn-easy').classList.toggle('mode-btn-active', activeSettings.gameMode === 'easy');
 }
 
 function mpSetGameMode(mode) {
-    gameMode = mode;
-    setMode(mode);
+    setMode(mode); // This now updates activeSettings
     document.getElementById('mp-btn-hard').classList.toggle('mode-btn-active', mode === 'hard');
     document.getElementById('mp-btn-easy').classList.toggle('mode-btn-active', mode === 'easy');
 }
