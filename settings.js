@@ -35,10 +35,23 @@ function setMode(mode) {
 
 function toggleSettings() {
     // Re-render settings each time the modal is opened to ensure they are fresh
-    renderSettings();
+    if (settingsModal.style.display !== 'flex') {
+        renderSettings();
+    }
     settingsModal.style.display = settingsModal.style.display === 'flex' ? 'none' : 'flex';
 }
 
+// Applies the current state of activeSettings to the game engine and plugin.
+function applyActiveSettings() {
+    if (typeof activePlugin.updateSettings === 'function') {
+        activePlugin.updateSettings(activeSettings);
+    }
+    pool = activePlugin.generateQuestionPool(activeSettings);
+    document.getElementById('remaining').innerText = pool.length;
+    updateActiveLabel();
+}
+
+// Reads settings from the main settings modal, applies them, and starts/restarts the game.
 function applySettings(startNew = true) {
     // Update activeSettings from the UI elements provided by the plugin
     const bordersCheckbox = document.getElementById('check-borders');
@@ -46,7 +59,6 @@ function applySettings(startNew = true) {
         activeSettings.showBorders = bordersCheckbox.checked;
     }
 
-    // The plugin knows about its own regions
     for (const regionId in activeSettings.regions) {
         const regionCheckbox = document.getElementById(`check-${regionId}`);
         if (regionCheckbox) {
@@ -54,17 +66,9 @@ function applySettings(startNew = true) {
         }
     }
 
-    // The plugin is responsible for updating the game's visual state
-    if (typeof activePlugin.updateSettings === 'function') {
-        activePlugin.updateSettings(activeSettings);
-    }
+    applyActiveSettings();
 
-    // The main app is responsible for regenerating the question pool
-    pool = activePlugin.generateQuestionPool(activeSettings);
-    document.getElementById('remaining').innerText = pool.length;
-
-    updateActiveLabel();
-    toggleSettings();
+    toggleSettings(); // Close the modal
     if (startNew) resetGame();
 }
 

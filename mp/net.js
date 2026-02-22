@@ -392,7 +392,13 @@ function mpStartGame() {
     else if (mpMode === 'land-grab') activeMode = LandGrabMode;
 
     // Update settings from the lobby UI
-    applySettings(false); // false = don't restart a single player game
+    for (const regionId in activeSettings.regions) {
+        const regionCheckbox = document.getElementById(`mp-check-${regionId}`);
+        if (regionCheckbox) {
+            activeSettings.regions[regionId] = regionCheckbox.checked;
+        }
+    }
+    applyActiveSettings();
 
     const questionPoolItems = activePlugin.generateQuestionPool(activeSettings);
     const shuffled = questionPoolItems.slice().sort(() => Math.random() - 0.5);
