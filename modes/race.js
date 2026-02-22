@@ -21,6 +21,8 @@ function mpResolveRound(winnerPeerId) {
 }
 
 const RaceMode = {
+    name: 'Race',
+    isMultiplayer: true,
     onAnswer(correct) {
         const targetName = activePlugin.getCorrectAnswer(currentTarget);
         if (correct) {
@@ -150,7 +152,13 @@ const RaceMode = {
         }
     },
 
-    start() {
-        mpAdvance();
-    },
-};
+        start() {
+            mpAdvance();
+        },
+    };
+    
+    // Register with the global Registry
+    if (typeof Registry !== 'undefined') {
+        Registry.registerMode('race', RaceMode);
+    }
+    

@@ -1,6 +1,8 @@
 // ─── MP Land Grab mode object ─────────────────────────────────────────────────
 
 const LandGrabMode = {
+    name: 'Land Grab',
+    isMultiplayer: true,
     pool: [],
     claimed: {},
     assignments: {},
@@ -182,4 +184,9 @@ const LandGrabMode = {
         this.advance();
     },
 };
+
+// Register with the global Registry
+if (typeof Registry !== 'undefined') {
+    Registry.registerMode('land-grab', LandGrabMode);
+}
 

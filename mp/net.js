@@ -368,9 +368,7 @@ function mpApplySettings(msg) {
     mpMode = msg.mpMode;
     mpQuestionPool = msg.questionPool;
     mpQuestionIdx = 0;
-    if (msg.mpMode === 'race') activeMode = RaceMode;
-    else if (msg.mpMode === 'compete') activeMode = CompeteMode;
-    else if (msg.mpMode === 'land-grab') activeMode = LandGrabMode;
+    activeMode = Registry.getMode(msg.mpMode);
     
     activeSettings.regions = msg.settings.regions;
     activeSettings.showBorders = msg.settings.showBorders;
@@ -409,9 +407,7 @@ function mpApplySettings(msg) {
 function mpStartGame() {
     if (!mpIsHost) return;
     mpMode = document.getElementById('mp-mode-select').value;
-    if (mpMode === 'race') activeMode = RaceMode;
-    else if (mpMode === 'compete') activeMode = CompeteMode;
-    else if (mpMode === 'land-grab') activeMode = LandGrabMode;
+    activeMode = Registry.getMode(mpMode);
 
     for (const regionId in activeSettings.regions) {
         const regionCheckbox = document.getElementById(`mp-check-${regionId}`);
@@ -603,6 +599,25 @@ function mpUpdateLobbyList() {
             ${p.name}${isMe ? ' (you)' : ''}
         </li>`;
     }).join('');
+    
+    // Also update mode selector if we are host
+    if (mpIsHost) mpUpdateLobbyModes();
+}
+
+function mpUpdateLobbyModes() {
+    const select = document.getElementById('mp-mode-select');
+    if (!select) return;
+    
+    const supportedModes = Registry.getModesForPlugin(activePlugin.id).filter(m => m.isMultiplayer);
+    const currentVal = select.value;
+    
+    select.innerHTML = supportedModes.map(m => `
+        <option value="${m.id}">${m.name}</option>
+    `).join('');
+    
+    if (supportedModes.some(m => m.id === currentVal)) {
+        select.value = currentVal;
+    }
 }
 
 function mpSetStatus(text) {

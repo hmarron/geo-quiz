@@ -6,13 +6,16 @@ let hintCount = 0;
 let startTime = null;
 let timerInterval = null;
 
-const activePlugin = new GeoQuizPlugin();
-let activeMode = SoloMode;  // default; set by startSinglePlayer() or mpStartGame()
+let activePlugin = null;
+let activeMode = null;
 
 let dataReady = false;
 let dataLoading = false;
 
 async function init(andThen) {
+    if (!activePlugin) activePlugin = Registry.getActivePlugin();
+    if (!activeMode) activeMode = Registry.getMode('solo');
+
     if (dataReady) { if (andThen) andThen(); return; }
     if (dataLoading) {
         const wait = setInterval(() => { if (dataReady) { clearInterval(wait); if (andThen) andThen(); } }, 100);
@@ -75,7 +78,7 @@ function goHome() {
 }
 
 function startSinglePlayer() {
-    activeMode = SoloMode;
+    activeMode = Registry.getMode('solo');
     document.getElementById('start-screen').style.display = 'none';
     // Initialize the app and plugin, then show settings before starting the first game.
     init(() => toggleSettings());

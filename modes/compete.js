@@ -4,6 +4,8 @@
 let competeQuestionIdx = 0;
 
 const CompeteMode = {
+    name: 'Compete',
+    isMultiplayer: true,
     onAnswer(correct) {
         canAnswer = false;
         const targetName = activePlugin.getCorrectAnswer(currentTarget);
@@ -94,3 +96,8 @@ const CompeteMode = {
         }
     },
 };
+
+// Register with the global Registry
+if (typeof Registry !== 'undefined') {
+    Registry.registerMode('compete', CompeteMode);
+}

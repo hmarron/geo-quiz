@@ -1,6 +1,8 @@
 // ─── Single-player mode object ────────────────────────────────────────────────
 
 const SoloMode = {
+    name: 'Solo Play',
+    isMultiplayer: false,
     onAnswer(correct) {
         canAnswer = false;
         if (correct) {
@@ -49,3 +51,8 @@ const SoloMode = {
         document.getElementById('start-screen').style.display = 'flex';
     },
 };
+
+// Register with the global Registry
+if (typeof Registry !== 'undefined') {
+    Registry.registerMode('solo', SoloMode);
+}

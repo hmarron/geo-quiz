@@ -4,6 +4,7 @@ class GeoQuizPlugin {
   constructor() {
     this.id = 'geo-quiz';
     this.name = 'Geography Quiz';
+    this.supportedModes = ['solo', 'race', 'compete', 'land-grab'];
 
     this.fullDataset = [];
 
@@ -320,6 +321,12 @@ class GeoQuizPlugin {
             dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost);
         }
     }
-    return dp[m][n];
-  }
-}
+        return dp[m][n];
+      }
+    }
+    
+    // Register with the global Registry
+    if (typeof Registry !== 'undefined') {
+        Registry.registerPlugin(new GeoQuizPlugin());
+    }
+    

@@ -92,7 +92,32 @@ function updateActiveLabel() {
     if(activeNames.length > 0 && activeNames.length < Object.keys(regionLabels).length) {
         label.innerText = activeNames.join(', ');
         label.classList.remove('hidden');
-    } else {
-        label.classList.add('hidden');
+        } else {
+            label.classList.add('hidden');
+        }
     }
-}
+    
+    // ─── Multiplayer Lobby Settings ──────────────────────────────────────────────
+    
+    function mpRenderLobbySettings() {
+        const container = document.getElementById('mp-region-toggles');
+        if (activePlugin && typeof activePlugin.getSettingsView === 'function') {
+            // We reuse the plugin's settings view but need to ensure IDs are unique if needed.
+            // For now, the lobby uses 'mp-check-' prefix in net.js mpStartGame(), 
+            // but the plugin's getSettingsView uses 'check-'. 
+            // Let's refactor this to be more robust.
+            container.innerHTML = activePlugin.getSettingsView().replaceAll('id="check-', 'id="mp-check-');
+        } else {
+            container.innerHTML = '';
+        }
+        
+        document.getElementById('mp-btn-hard').classList.toggle('mode-btn-active', activeSettings.gameMode === 'hard');
+        document.getElementById('mp-btn-easy').classList.toggle('mode-btn-active', activeSettings.gameMode === 'easy');
+    }
+    
+    function mpSetGameMode(mode) {
+        setMode(mode);
+        document.getElementById('mp-btn-hard').classList.toggle('mode-btn-active', mode === 'hard');
+        document.getElementById('mp-btn-easy').classList.toggle('mode-btn-active', mode === 'easy');
+    }
+    
