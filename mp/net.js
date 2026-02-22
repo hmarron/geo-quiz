@@ -426,12 +426,6 @@ function mpStartGame() {
     mpQuestionPool = shuffled.map(item => activePlugin.getItemId(item)).filter(Boolean);
     mpQuestionIdx = 0;
 
-    if (mpMode === 'land-grab') {
-        mpLandGrabPool = mpQuestionPool.slice();
-        mpLandGrabClaimed = {};
-        mpLandGrabAssignments = {};
-    }
-
     const playerData = {};
     Object.entries(mpPlayers).forEach(([pid, p]) => {
         playerData[pid] = { name: p.name, color: mpPlayerColors[pid] };
@@ -542,9 +536,6 @@ function closeLobby() {
     mpQuestionPool = [];
     mpQuestionIdx = 0;
     mpMyPeerId = null;
-    mpLandGrabPool = [];
-    mpLandGrabClaimed = {};
-    mpLandGrabAssignments = {};
     activeMode = SoloMode;
     document.getElementById('mp-lobby-modal').style.display = 'none';
     document.getElementById('mp-code-display').classList.add('hidden');

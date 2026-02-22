@@ -8,7 +8,8 @@ A browser-based geography quiz with solo and peer-to-peer multiplayer. No server
 
 | Layer | Library |
 |---|---|
-| Map rendering | D3 v7 (SVG, geoMercator, zoom) |
+| Architecture | Plugin-based (e.g. `GeoQuizPlugin`) |
+| Map rendering | D3 v7 (SVG, geoMercator, zoom) — managed by plugin |
 | Styling | Tailwind CSS (CDN) |
 | Multiplayer | PeerJS v1 (WebRTC, no signalling server needed) |
 | Data | Natural Earth 50m GeoJSON fetched from GitHub at runtime |
@@ -21,15 +22,15 @@ A browser-based geography quiz with solo and peer-to-peer multiplayer. No server
 Scripts are loaded in dependency order — later files can call functions defined in earlier ones.
 
 ```
-utils.js          pure functions, no DOM
-map.js            D3 setup, color constants
-settings.js       regions[], gameMode, settings UI
+utils.js          pure functions (formatTime)
+plugins/geo-quiz.js GeoQuizPlugin class (D3 setup, map rendering, quiz logic)
+settings.js       activeSettings object, UI for settings
 scores.js         localStorage, finish/scores modals
-quiz.js           renderQuestion(), nextQuestion(), handleCorrect/Wrong()
+quiz.js           renderQuestion(), nextQuestion(), thin layer over plugin
 modes/solo.js     SoloMode object
-modes/race.js     RaceMode object + mpResolveRound()
+modes/race.js     RaceMode object
 modes/compete.js  CompeteMode object
-modes/land-grab.js LandGrabMode object + mpLandGrabAdvance() etc.
+modes/land-grab.js LandGrabMode object
 mp/net.js         PeerJS, lobby, message router, mpAdvance()
 app.js            init(), timer, activeMode, startSinglePlayer(), PWA
 ```
@@ -46,32 +47,30 @@ Everything is `var`/`let` at module scope (i.e. global in the browser).
 
 ### app.js
 ```
+activePlugin                   — instance of GeoQuizPlugin
+activeMode                     — current mode object (SoloMode | RaceMode | CompeteMode | LandGrabMode)
 score, wrongCount, hintCount   — current game counters
 startTime, timerInterval       — wall-clock timer
-fullDataset                    — all GeoJSON features (loaded once)
-activeMode                     — the current mode object (SoloMode | RaceMode | CompeteMode | LandGrabMode)
 dataReady, dataLoading         — init() guard flags
 ```
 
 ### quiz.js
 ```
-pool           — array of GeoJSON features still to be answered (solo only)
-currentTarget  — the GeoJSON feature currently being asked about
+pool           — array of items still to be answered (solo only)
+currentTarget  — the item currently being asked about
 canAnswer      — bool; gates handleCorrect/Wrong to prevent double-submission
 ```
 
 ### settings.js
 ```
-regions[]   — array of { id, label, active } objects; mutated by applySettings
-showBorders — bool
-gameMode    — 'easy' | 'hard'
+activeSettings — { gameMode, showBorders, regions: { id: bool } }
 ```
 
-### map.js
+### plugins/geo-quiz.js
 ```
-svg, g, projection, path, zoom  — D3 primitives, used everywhere
-width, height                   — container dimensions, updated on resize
-COLOR_ACTIVE_FILL, COLOR_BORDER, COLOR_EXCLUDED_FILL  — fill constants
+fullDataset — all GeoJSON features (loaded once)
+svg, g, projection, path, zoom — D3 primitives
+COLOR_ACTIVE_FILL, COLOR_BORDER, COLOR_EXCLUDED_FILL — fill constants
 ```
 
 ### race.js
@@ -83,9 +82,9 @@ mpWinnerWindowTimer  — timeout handle
 
 ### land-grab.js
 ```
-mpLandGrabPool        — ISO_A3 strings not yet assigned
-mpLandGrabClaimed     — { iso: peerId } claimed territories
-mpLandGrabAssignments — { peerId: iso | null } current assignment per player
+LandGrabMode.pool         — ID strings not yet assigned
+LandGrabMode.claimed      — { id: peerId } claimed territories
+LandGrabMode.assignments  — { peerId: id | null } current assignment per player
 ```
 
 ### mp/net.js
@@ -98,12 +97,11 @@ mpPlayers             — { peerId: { name, score, wrong } }
 mpPlayerColors        — { peerId: '#hex' }
 mpMyPeerId            — local peer id
 mpLocalName           — local player name
-mpRoundAnswered       — { peerId: bool } (race/compete: answered this round)
-mpRoundAcked          — { peerId: bool } (race: received 'question' ack)
+mpRoundAnswered       — { peerId: bool }
+mpRoundAcked          — { peerId: bool }
 mpAckTimeout          — timeout handle for ack wait
-mpQuestionPool        — ordered ISO_A3 array for race/compete
+mpQuestionPool        — ordered ID array for game session
 mpQuestionIdx         — next index into mpQuestionPool
-MP_ACK_TIMEOUT_MS (3000), MP_WINNER_WINDOW_MS (300)  — timing constants
 ```
 
 ---
@@ -134,34 +132,35 @@ MP_ACK_TIMEOUT_MS (3000), MP_WINNER_WINDOW_MS (300)  — timing constants
 ```
 startSinglePlayer()
   → activeMode = SoloMode
-  → init(cb)             fetches GeoJSON, renders map, sets up Enter-key listener
-  → resetGame()          → SoloMode.onReset()
-      resets counters, refills pool from fullDataset.filter(isAllowed)
-      calls nextQuestion()
+  → init(cb)
+      activePlugin.loadScripts()  (e.g. D3)
+      activePlugin.loadData()     (e.g. GeoJSON)
+      activePlugin.renderQuizView() (D3 setup)
+      activePlugin.bindUIEvents() (Zoom controls)
+      toggleSettings()
 
 nextQuestion()
   pool empty? → activeMode.onDone() → SoloMode.onDone() → showFinishModal()
-  else: picks random feature from pool, sets currentTarget, calls renderQuestion()
+  else: picks random item from pool, sets currentTarget, calls renderQuestion()
 
 renderQuestion()
   sets canAnswer = true
+  activePlugin.displayQuestion(currentTarget) (highlights and zooms map)
   hard mode: shows text input, hides options
-  easy mode: hides input, generates 4 choices via generateChoices()
-  highlights current country on map (.country-highlight → yellow fill)
-  zooms map to fit the country
+  easy mode: hides input, generates choices via activePlugin.generateChoices()
 
 user answers →
   handleCorrect() / handleWrong()
   → activeMode.onAnswer(correct) → SoloMode.onAnswer()
-      updates score/wrongCount, shows overlay for 600ms
-      removes country from pool
+      updates score/wrongCount, shows overlay for 600ms via activePlugin.showOverlay()
+      removes item from pool
       setTimeout(nextQuestion, 700|800)
 ```
 
 **Answer checking (hard mode)**:
-`checkTypedAnswer()` runs on Enter. It:
-1. Normalises the guess (lowercase, strip accents/punctuation, strip leading "the")
-2. Checks exact match or substring match against all acceptable names (NAME, ADMIN, NAME_LONG, ABBREV, ISO_A3, ISO_A2)
+`checkTypedAnswer()` runs on Enter. It delegates to `activePlugin.checkTypedAnswer()`, which:
+1. Normalises the guess (lowercase, strip accents/punctuation)
+2. Checks exact match or substring match against acceptable names
 3. Falls back to Levenshtein distance ≤ 2 (≤ 1 for short names) against the primary name
 
 ---
@@ -189,14 +188,14 @@ Guest B ──answered──▶ Host ──round-over──▶ Guest B
 
 1. Host clicks Start → `mpStartGame()`:
    - Reads mode from dropdown, reads region checkboxes
-   - Shuffles `fullDataset.filter(isAllowed)` → `mpQuestionPool` (ISO_A3 strings)
+   - Shuffles `activePlugin.generateQuestionPool()` → `mpQuestionPool` (ordered ID strings)
    - Sets `activeMode = RaceMode | CompeteMode | LandGrabMode`
    - Broadcasts `game-start` with settings + question pool + player list
    - Calls `activeMode.start()`
 
 2. Guests receive `game-start` → `mpApplySettings()`:
    - Sets mpMode, activeMode, mpQuestionPool
-   - Applies region/gameMode settings locally (re-renders map)
+   - Applies settings via `activePlugin.updateSettings()`
    - Hides lobby, sets mpIsActive = true
    - Waits for first question message
 
@@ -205,16 +204,15 @@ Guest B ──answered──▶ Host ──round-over──▶ Guest B
 Lobby/infrastructure messages handled directly in net.js:
 - `ready`, `welcome`, `player-joined` — lobby player list
 - `game-start` → `mpApplySettings()`
-- `question` → `mpSetQuestion(featureId)` then `activeMode.onMessage(msg)`
-- `ack` → `mpHandleAck(fromId)` (ack-based synchronisation for race)
+- `question` → `mpSetQuestion(itemId)` then `activeMode.onMessage(msg)`
+- `ack` → `mpHandleAck(fromId)`
 - `score-update`, `player-score` — score relay
 - `game-over` → `showMpFinishModal()`
 - `player-left` — disconnect cleanup
 
-Mode-specific messages are fall-through cases routed to `activeMode.onMessage(msg, fromId)`:
+Mode-specific messages are routed to `activeMode.onMessage(msg, fromId)`:
 ```
-'go', 'answered', 'round-over',
-'land-grab-claimed', 'land-grab-next', 'land-grab-pool'
+'go', 'answered', 'round-over', 'land-grab-question', 'land-grab-claimed', 'land-grab-next', 'land-grab-pool'
 ```
 
 ---
@@ -306,42 +304,33 @@ game over:
 
 ## Map rendering
 
-The GeoJSON source is `ne_50m_admin_0_countries.geojson` from Natural Earth (fetched once, cached by service worker).
+Map rendering is encapsulated within the plugin (e.g., `GeoQuizPlugin.renderQuizView()`).
 
-Each feature has a `<path>` element with class `country` or `country country-excluded`.
+The Geography Quiz uses `ne_50m_admin_0_countries.geojson` from Natural Earth (fetched once, cached by service worker).
 
 | CSS class | fill | meaning |
 |---|---|---|
-| `.country` | `COLOR_ACTIVE_FILL` (#374151) | in active regions |
-| `.country-excluded` | `COLOR_EXCLUDED_FILL` (#1a2a3a) | not in active regions |
-| `.country-highlight` | #fbbf24 (yellow, `!important`) | current question target |
+| `.country` | `COLOR_ACTIVE_FILL` | in active regions |
+| `.country-excluded` | `COLOR_EXCLUDED_FILL` | not in active regions |
+| `.country-highlight` | yellow | current target |
 
-MP country coloring uses `mpColorCountry(iso, color)` which sets inline `fill` style by ISO_A3 code. This overrides the class-based fill.
+MP country coloring uses `activePlugin.colorItem(id, color)` which sets inline `fill` style.
 
 **Zoom:** D3 zoom with `scaleExtent([1, 100])`. Each question auto-zooms to fit the target country. User controls: `zoomIn()`, `zoomOut()`, `resetZoom()`.
-
-**Region mapping:** `getCountryRegionId(feature)` uses the CONTINENT property and latitude of centroid to assign one of 7 region ids. Africa is split at the equator into africa-north / africa-south.
 
 ---
 
 ## Settings
 
-`regions[]` in settings.js is the canonical list. It's mutated in-place by `applySettings()` and `mpApplySettings()`. `isAllowed(feature)` checks it.
+`activeSettings` in settings.js is the canonical object. It's mutated by `applySettings()`.
 
-`gameMode` ('easy' | 'hard') controls input type in `renderQuestion()`:
-- **easy**: 4 multiple-choice buttons (1 correct + 3 random from allowed pool)
-- **hard**: text input; answer checked via `checkTypedAnswer()` on Enter
-
-Settings are not persisted between sessions (regions reset to defaults on reload).
+The plugin provides the settings UI via `getSettingsView()` and reacts to changes via `updateSettings()`.
 
 ---
 
 ## Scores (solo only)
 
-Stored in `localStorage` under key `geo-quiz-scores`. Array of up to 20 entries, sorted by accuracy desc then time asc. Each entry:
-```js
-{ score, wrong, hints, time, date, settings: { mode, regions: [id, ...] } }
-```
+Stored in `localStorage` under key `geo-quiz-scores`. Array of up to 20 entries.
 
 The finish modal shows your best previous score for the same `mode + regions` combination.
 
@@ -350,11 +339,9 @@ The finish modal shows your best previous score for the same `mode + regions` co
 ## PWA / service worker
 
 `sw.js` uses three caching strategies:
-- **GeoJSON** (large, ~1MB): cache-first — download once, never re-fetch
-- **CDN libs** (D3, Tailwind, PeerJS): cache-first — versioned URLs
+- **Large Data** (e.g., GeoJSON): cache-first
+- **CDN libs** (D3, Tailwind, PeerJS): cache-first
 - **App shell** (HTML/CSS/JS): network-first with offline fallback
-
-Cache name `geo-quiz-v1` — bump to invalidate all caches.
 
 ---
 
@@ -363,19 +350,12 @@ Cache name `geo-quiz-v1` — bump to invalidate all caches.
 | ID | Purpose |
 |---|---|
 | `start-screen` | Full-screen overlay; hidden when game starts |
-| `loader` | Shown while GeoJSON loads |
-| `map-container` | D3 SVG parent |
-| `country-overlay` | "France" / red flash overlay on answer |
+| `loader` | Shown while data loads |
+| `quiz-view-container` | Parent container for plugin rendering |
+| `plugin-settings-container` | Where the plugin injects its setting toggles |
 | `answer-input` | Hard mode text input |
 | `options-grid` | Easy mode choice buttons |
-| `input-area` | Wraps answer-input + hint button |
 | `score`, `wrong-count`, `timer`, `remaining` | Header stats |
-| `finish-modal` | Solo game-over screen |
-| `scores-modal` | High scores list |
-| `settings-modal` | Region/mode settings |
-| `mp-lobby-modal` | Multiplayer lobby |
-| `mp-finish-modal` | MP game-over screen |
-| `mp-results-pill` | Floating "Results →" button when viewing map after MP game |
 
 ---
 
@@ -387,12 +367,9 @@ Cache name `geo-quiz-v1` — bump to invalidate all caches.
 2. Add `<script src="modes/my-mode.js"></script>` to `index.html` before `mp/net.js`
 3. In `mp/net.js`: add `else if (mpMode === 'my-mode') activeMode = MyMode` in both `mpStartGame()` and `mpApplySettings()`
 4. Add the option to the `<select id="mp-mode-select">` in `index.html`
-5. Add any new message types to the routing fall-through in `handleMpMessage()`
 
-### Add a new region
+### Add a new quiz type (Plugin)
 
-Add an entry to the `regions[]` array in `settings.js`. The `getCountryRegionId()` function in `map.js` maps GeoJSON features to region ids using the CONTINENT property and latitude — you may need to extend it for unusual regions.
+1. Create `plugins/my-plugin.js` implementing the plugin interface: `loadData`, `getSettingsView`, `generateQuestionPool`, `getItemId`, `getCorrectAnswer`, `checkTypedAnswer`, `renderQuizView`, `updateSettings`, `displayQuestion`, etc.
+2. In `app.js`, instantiate your plugin as `activePlugin`.
 
-### Change answer matching
-
-Edit `checkTypedAnswer()` in `quiz.js`. It calls `getAcceptableNames()` (from utils.js) for the set of valid strings, then falls through to Levenshtein distance against the primary name.
