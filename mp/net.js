@@ -304,7 +304,9 @@ function mpAdvance() {
     if (!mpIsHost) return;
 
     // This function is now only used for Race mode's lock-step progression.
-    if (mpMode !== 'race') return;
+    if (mpMode !== 'race') {
+        return;
+    }
 
     if (mpQuestionIdx >= mpQuestionPool.length) {
         const results = Object.entries(mpPlayers).map(([pid, p]) => ({

@@ -43,7 +43,7 @@ const CompeteMode = {
         canAnswer = false;
         inputArea.classList.add('hidden');
         optionsGrid.classList.add('hidden');
-        activePlugin.resetView();
+        // Do not reset the view, so the player can see their answers.
         sendToHost({ type: 'finished-compete' });
         mpShowToast('You finished! Waiting for other players...');
     },

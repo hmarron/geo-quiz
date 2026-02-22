@@ -4,17 +4,17 @@ This file tracks bugs found during testing and their resolution.
 
 ---
 
-### 1. Last country not colored in Race Mode at game end
+### 1. Last country not colored at game end (Race & Land Grab)
 
 -   **Status:** Fixed
--   **File(s) Affected:** `modes/race.js`, `mp/net.js`
--   **Problem:** In multiplayer Race Mode, when a player correctly answered the final question, the game would immediately end and show the results screen. When the user then clicked "View Map", the final country was not colored with the winner's color.
--   **Root Cause:** This was a race condition. The host would resolve the final round, broadcast a `round-over` message (to trigger coloring), and then almost immediately broadcast a `game-over` message. Clients did not have enough time to process the `round-over` message and render the color change before the results modal was displayed.
--   **Solution:** An acknowledgement (`ack`) system was implemented for the final round.
-    1.  The host resolves the final round and broadcasts `round-over`, but then waits instead of immediately ending the game.
-    2.  Each client, upon receiving the final `round-over` message, colors its map and sends a `final-round-processed` acknowledgement back to the host.
+-   **File(s) Affected:** `modes/race.js`, `modes/land-grab.js`, `mp/net.js`
+-   **Problem:** In multiplayer Race and Land Grab modes, when the final question was answered or the final country was claimed, the game would immediately end and show the results screen. When the user then clicked "View Map", the final country was not colored with the winner's color.
+-   **Root Cause:** This was a race condition. The host would resolve the final round, broadcast a message to trigger coloring (`round-over` or `land-grab-claimed`), and then almost immediately broadcast a `game-over` message. Clients did not have enough time to process the coloring message and render the change before the results modal was displayed.
+-   **Solution:** An acknowledgement (`ack`) system was implemented for the final round of these modes.
+    1.  The host resolves the final round and broadcasts the result, but then waits instead of immediately ending the game.
+    2.  Each client, upon receiving the final round/claim message, colors its map and sends a `final-round-processed` acknowledgement back to the host.
     3.  The host waits until it has received an ack from every client.
-    4.  Once all clients have confirmed they've processed the final round's visual state, the host then broadcasts the `game-over` message to conclude the game. This ensures the visual update is always completed before the final results are shown.
+    4.  Once all clients have confirmed they've processed the final visual state, the host then broadcasts the `game-over` message to conclude the game. This ensures the visual update is always completed before the final results are shown.
 
 ---
 

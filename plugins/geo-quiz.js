@@ -244,12 +244,12 @@ class GeoQuizPlugin {
   }
 
   colorItem(itemId, color) {
-    const item = this.getItemById(itemId);
-    if (item) {
-        this.g.selectAll("path")
-            .filter(d => d === item)
-            .style("fill", color);
-    }
+    if (!itemId || !color) return;
+    // Filter the d3 selection directly by the item's ID property.
+    // This is more robust than comparing object references.
+    this.g.selectAll("path")
+        .filter(d => d && d.properties && this.getItemId(d) === itemId)
+        .style("fill", color);
   }
 
   resetView() {

@@ -1,21 +1,25 @@
 // ─── MP Land Grab mode object ─────────────────────────────────────────────────
-// Continuous model: each player gets questions independently at their own pace.
-// Countries are colored only when claimed (correct answer), never when assigned.
-// Race phase: when pool empties, multiple players may be assigned the same country.
-// First correct claim wins; losers are immediately reassigned another race country.
 
 let mpLandGrabPool = [];
 let mpLandGrabClaimed = {};
-let mpLandGrabAssignments = {}; // { peerId: iso | null }  null = no more questions
+let mpLandGrabAssignments = {};
 
-// Host: kick off the game by assigning each player their first country.
+function mpLandGrabEndGame() {
+    const results = Object.entries(mpPlayers).map(([pid, p]) => ({
+        peerId: pid, name: p.name, score: p.score, wrong: p.wrong,
+    }));
+    results.forEach(r => { if (r.peerId === mpMyPeerId) { r.score = score; r.wrong = wrongCount; } });
+    results.sort((a, b) => b.score - a.score);
+    broadcast({ type: 'game-over', results });
+    showMpFinishModal(results);
+}
+
 function mpLandGrabAdvance() {
     if (!mpIsHost) return;
     if (!startTime) startTimer();
     Object.keys(mpPlayers).forEach(pid => mpLandGrabAssignNext(pid));
 }
 
-// Host: assign the next country from the pool to a specific player.
 function mpLandGrabAssignNext(peerId, wrongIso = null) {
     if (wrongIso) mpLandGrabPool.push(wrongIso);
 
@@ -45,10 +49,9 @@ function mpLandGrabAssignNext(peerId, wrongIso = null) {
     }
 
     mpLandGrabAssignments[peerId] = null;
-    mpLandGrabCheckAllDone();
+    // Game doesn't end here anymore, it ends on the final claim.
 }
 
-// Host: send an assignment to a specific player (host or guest).
 function mpLandGrabSendAssignment(peerId, iso, remaining) {
     if (peerId === mpMyPeerId) {
         currentTarget = activePlugin.getItemById(iso) || null;
@@ -59,22 +62,6 @@ function mpLandGrabSendAssignment(peerId, iso, remaining) {
     }
 }
 
-// Host: end the game when every active player has no remaining assignment.
-function mpLandGrabCheckAllDone() {
-    const active = Object.keys(mpPlayers);
-    if (active.length === 0) return;
-    if (!active.every(pid => mpLandGrabAssignments[pid] === null)) return;
-
-    const results = Object.entries(mpPlayers).map(([pid, p]) => ({
-        peerId: pid, name: p.name, score: p.score, wrong: p.wrong,
-    }));
-    results.forEach(r => { if (r.peerId === mpMyPeerId) { r.score = score; r.wrong = wrongCount; } });
-    results.sort((a, b) => b.score - a.score);
-    broadcast({ type: 'game-over', results });
-    showMpFinishModal(results);
-}
-
-// Host: record a correct claim and broadcast the coloring to all players.
 function mpLandGrabClaim(peerId, iso) {
     if (mpLandGrabClaimed[iso]) return false;
 
@@ -82,11 +69,13 @@ function mpLandGrabClaim(peerId, iso) {
     if (peerId !== mpMyPeerId && mpPlayers[peerId]) mpPlayers[peerId].score++;
     const playerScore = peerId === mpMyPeerId ? score : mpPlayers[peerId].score;
     
+    const isLastClaim = Object.keys(mpLandGrabClaimed).length === mpQuestionPool.length;
+
     if (typeof activePlugin.colorItem === 'function') {
         activePlugin.colorItem(iso, mpPlayerColors[peerId]);
     }
 
-    broadcast({ type: 'land-grab-claimed', peerId, iso });
+    broadcast({ type: 'land-grab-claimed', peerId, iso, isLast: isLastClaim });
     broadcast({ type: 'player-score', peerId, score: playerScore,
         wrong: peerId === mpMyPeerId ? wrongCount : mpPlayers[peerId]?.wrong ?? 0 });
 
@@ -95,6 +84,14 @@ function mpLandGrabClaim(peerId, iso) {
             mpLandGrabAssignNext(pid);
         }
     });
+
+    if (isLastClaim) {
+        mpFinalAck = {};
+        mpFinalAck[mpMyPeerId] = true;
+        if (Object.keys(mpPlayers).every(pid => mpFinalAck[pid])) {
+            mpLandGrabEndGame();
+        }
+    }
 
     return true;
 }
@@ -133,11 +130,8 @@ const LandGrabMode = {
                 if (!mpIsHost) return;
                 if (msg.correct && msg.iso) {
                     mpLandGrabClaim(fromId, msg.iso);
-                    setTimeout(() => mpLandGrabAssignNext(fromId), msg.correct ? 700 : 800);
-                } else {
-                    const wrongIso = msg.iso || null;
-                    setTimeout(() => mpLandGrabAssignNext(fromId, wrongIso), 800);
                 }
+                setTimeout(() => mpLandGrabAssignNext(fromId, msg.correct ? null : msg.iso), msg.correct ? 700 : 800);
                 break;
             }
 
@@ -165,7 +159,20 @@ const LandGrabMode = {
                 if (typeof activePlugin.colorItem === 'function') {
                     activePlugin.colorItem(msg.iso, mpPlayerColors[msg.peerId]);
                 }
+                if (msg.isLast && !mpIsHost) {
+                    sendToHost({ type: 'final-round-processed' });
+                }
                 break;
+
+            case 'final-round-processed': {
+                if (!mpIsHost) return;
+                mpFinalAck[fromId] = true;
+                const allAcked = Object.keys(mpPlayers).every(pid => mpFinalAck[pid]);
+                if (allAcked) {
+                    mpLandGrabEndGame();
+                }
+                break;
+            }
         }
     },
 
