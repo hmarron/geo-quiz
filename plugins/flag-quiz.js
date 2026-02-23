@@ -4,6 +4,8 @@ class FlagQuizPlugin {
   constructor() {
     this.id = 'flag-quiz';
     this.name = 'Flag Quiz';
+    this.title = 'Flag Challenge';
+    this.subtitle = 'Identify world flags';
     this.supportedModes = ['solo', 'race', 'compete'];
 
     this.fullDataset = [];
@@ -11,6 +13,7 @@ class FlagQuizPlugin {
     this.flagImg = null;
     this.overlay = null;
     this.nameDisplay = null;
+    this.claims = {}; // { itemId: color }
 
     // Use a subset of regions consistent with geo-quiz
     this.regions = [
@@ -51,6 +54,25 @@ class FlagQuizPlugin {
       <div class="mb-6">
           <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-widest mb-4">Regions</h3>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="region-toggles">
+              ${regionsHTML}
+          </div>
+      </div>
+    `;
+  }
+
+  getLobbySettingsView() {
+    const regionsHTML = this.regions.map(r => `
+        <label class="flex items-center gap-2 p-2 bg-slate-700/50 rounded-lg cursor-pointer hover:bg-slate-700 transition-colors">
+            <input type="checkbox" id="mp-check-${r.id}" ${activeSettings.regions[r.id] ? 'checked' : ''}
+                   class="w-4 h-4 rounded border-slate-600 bg-slate-800 text-blue-500 focus:ring-blue-500">
+            <span class="text-xs font-medium text-slate-200">${r.label}</span>
+        </label>
+    `).join('');
+
+    return `
+      <div>
+          <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">Regions</h3>
+          <div class="flex flex-col gap-1.5">
               ${regionsHTML}
           </div>
       </div>
@@ -168,7 +190,37 @@ class FlagQuizPlugin {
   }
 
   colorItem(itemId, color) {
-    // This plugin doesn't have a map to color, but if it did it would happen here.
+    this.claims[itemId] = color;
+  }
+
+  renderResultView(container) {
+    if (!container) return;
+    
+    // Create a grid of all flags that were asked or are in the dataset
+    // For simplicity, let's show all flags that were claimed.
+    const claimedIds = Object.keys(this.claims);
+    if (claimedIds.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+
+    container.innerHTML = `
+        <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 text-center">Flag Collection</h3>
+        <div class="grid grid-cols-4 sm:grid-cols-6 gap-2">
+            ${claimedIds.map(id => {
+                const color = this.claims[id];
+                const iso = id.toLowerCase();
+                const item = this.getItemById(id);
+                const name = item ? item.properties.NAME : id;
+                return `
+                    <div class="aspect-[3/2] rounded-md p-1 shadow-sm flex items-center justify-center transition-transform hover:scale-105" 
+                         style="background-color: ${color}" title="${name}">
+                        <img src="https://flagcdn.com/w80/${iso}.png" class="max-w-full max-h-full rounded-sm shadow-sm pointer-events-none">
+                    </div>
+                `;
+            }).join('')}
+        </div>
+    `;
   }
 
   clearHighlights() {
@@ -176,6 +228,7 @@ class FlagQuizPlugin {
   }
 
   resetView() {
+    this.claims = {};
     if (this.flagImg) this.flagImg.style.display = 'none';
     if (this.overlay) this.overlay.classList.add('hidden');
     const border = document.getElementById('flag-border');
@@ -183,6 +236,25 @@ class FlagQuizPlugin {
         border.style.backgroundColor = '';
         border.className = 'p-2 bg-slate-700 rounded-2xl shadow-2xl transition-all duration-300';
     }
+  }
+
+  getActiveItemsDescription(settings) {
+    const regionLabels = {
+        'north-america': 'North America',
+        'south-america': 'South America',
+        'europe': 'Europe',
+        'asia': 'Asia',
+        'africa': 'Africa',
+        'oceania': 'Oceania'
+    };
+    const activeNames = Object.keys(settings.regions)
+        .filter(r => settings.regions[r])
+        .map(r => regionLabels[r]);
+    
+    if(activeNames.length > 0 && activeNames.length < Object.keys(regionLabels).length) {
+        return activeNames.join(', ');
+    }
+    return '';
   }
 
   // Internal Helpers (similar to GeoQuizPlugin)

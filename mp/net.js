@@ -409,10 +409,12 @@ function mpStartGame() {
     mpMode = document.getElementById('mp-mode-select').value;
     activeMode = Registry.getMode(mpMode);
 
-    for (const regionId in activeSettings.regions) {
-        const regionCheckbox = document.getElementById(`mp-check-${regionId}`);
-        if (regionCheckbox) {
-            activeSettings.regions[regionId] = regionCheckbox.checked;
+    if (activeSettings.regions) {
+        for (const regionId in activeSettings.regions) {
+            const regionCheckbox = document.getElementById(`mp-check-${regionId}`);
+            if (regionCheckbox) {
+                activeSettings.regions[regionId] = regionCheckbox.checked;
+            }
         }
     }
     applyActiveSettings();
@@ -460,6 +462,20 @@ function showMpFinishModal(results) {
     // Clear any remaining highlights
     if (activePlugin && typeof activePlugin.clearHighlights === 'function') {
         activePlugin.clearHighlights();
+    }
+
+    const pluginResultsContainer = document.getElementById('plugin-mp-results');
+    if (pluginResultsContainer && activePlugin && typeof activePlugin.renderResultView === 'function') {
+        activePlugin.renderResultView(pluginResultsContainer);
+    } else if (pluginResultsContainer) {
+        pluginResultsContainer.innerHTML = '';
+    }
+
+    const pluginActionsContainer = document.getElementById('plugin-mp-actions');
+    if (pluginActionsContainer && activePlugin && typeof activePlugin.renderResultActions === 'function') {
+        activePlugin.renderResultActions(pluginActionsContainer);
+    } else if (pluginActionsContainer) {
+        pluginActionsContainer.innerHTML = '';
     }
 
     const winner = results[0];

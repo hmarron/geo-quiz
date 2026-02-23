@@ -23,8 +23,8 @@
         <div class="flex flex-col items-center gap-6 w-full max-w-xs px-6">
             <div class="text-6xl">🌍</div>
             <div class="text-center">
-                <h1 class="text-3xl font-bold text-white">Geography Challenge</h1>
-                <p class="text-slate-400 mt-1 text-sm">Test your world geography knowledge</p>
+                <h1 id="app-title" class="text-3xl font-bold text-white">Geography Challenge</h1>
+                <p id="app-subtitle" class="text-slate-400 mt-1 text-sm">Test your world geography knowledge</p>
             </div>
             <div class="w-full flex flex-col gap-3">
                 <button onclick="startSinglePlayer()" class="w-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white py-4 rounded-xl font-bold text-lg transition-colors">
@@ -177,14 +177,12 @@
                 </div>
 
                 <div class="border-t border-slate-700 pt-4 mb-4">
-                    <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Answer Style</p>
                     <div class="grid grid-cols-2 gap-2 mb-4">
                         <button id="mp-btn-hard" onclick="mpSetGameMode('hard')" class="py-1.5 rounded-lg text-xs font-bold bg-slate-700 border border-slate-600 text-white transition-all">Hard (Type)</button>
                         <button id="mp-btn-easy" onclick="mpSetGameMode('easy')" class="py-1.5 rounded-lg text-xs font-bold bg-slate-700 border border-slate-600 text-white transition-all">Easy (Choices)</button>
                     </div>
 
-                    <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Regions</p>
-                    <div id="mp-region-toggles" class="flex flex-col gap-1.5"></div>
+                    <div id="plugin-mp-settings" class="flex flex-col gap-4"></div>
                 </div>
 
                 <button onclick="mpStartGame()" id="btn-mp-start" class="w-full bg-green-600 hover:bg-green-500 text-white py-2.5 rounded-xl font-bold transition-colors">Start Game</button>
@@ -201,10 +199,14 @@
             <div class="text-4xl text-center mb-2">🏆</div>
             <h2 class="text-xl font-bold text-white text-center mb-4" id="mp-finish-title">Game Over</h2>
             <div id="mp-results-list" class="flex flex-col gap-2 mb-5"></div>
+            
+            <!-- Plugin-specific results (e.g. Flag Grid) -->
+            <div id="plugin-mp-results" class="mb-5 max-h-[40vh] overflow-y-auto custom-scrollbar"></div>
+
             <button id="btn-mp-play-again" onclick="mpPlayAgain()" class="hidden w-full bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-xl font-bold transition-colors mb-2">Play Again</button>
-            <div class="grid grid-cols-2 gap-2 mt-2">
+            <div class="flex flex-col gap-2 mt-2">
+                <div id="plugin-mp-actions" class="flex flex-col gap-2"></div>
                 <button onclick="mpGoHome()" class="bg-slate-700 hover:bg-slate-600 text-white py-2.5 rounded-xl font-bold transition-colors">Home</button>
-                <button onclick="mpViewMap()" class="bg-slate-700 hover:bg-slate-600 text-white py-2.5 rounded-xl font-bold transition-colors">View Map</button>
             </div>
         </div>
     </div>
@@ -247,7 +249,8 @@
 
     <script src="utils.js"></script>
     <script src="registry.js"></script>
-    <script src="plugins/geo-quiz.js"></script>
+    <!-- <script src="plugins/geo-quiz.js"></script> -->
+    <script src="plugins/flag-quiz.js"></script>
     <script src="settings.js"></script>
     <script src="scores.js"></script>
     <script src="quiz.js"></script>

@@ -4,6 +4,8 @@ class GeoQuizPlugin {
   constructor() {
     this.id = 'geo-quiz';
     this.name = 'Geography Quiz';
+    this.title = 'Geography Challenge';
+    this.subtitle = 'Test your world geography knowledge';
     this.supportedModes = ['solo', 'race', 'compete', 'land-grab'];
 
     this.fullDataset = [];
@@ -75,6 +77,25 @@ class GeoQuizPlugin {
       <div class="mb-6">
           <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-widest mb-4">Continents & Regions</h3>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="region-toggles">
+              ${regionsHTML}
+          </div>
+      </div>
+    `;
+  }
+
+  getLobbySettingsView() {
+    const regionsHTML = this.initialRegions.map(r => `
+        <label class="flex items-center gap-2 p-2 bg-slate-700/50 rounded-lg cursor-pointer hover:bg-slate-700 transition-colors">
+            <input type="checkbox" id="mp-check-${r.id}" ${activeSettings.regions[r.id] ? 'checked' : ''}
+                   class="w-4 h-4 rounded border-slate-600 bg-slate-800 text-blue-500 focus:ring-blue-500">
+            <span class="text-xs font-medium text-slate-200">${r.label}</span>
+        </label>
+    `).join('');
+
+    return `
+      <div>
+          <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">Regions</h3>
+          <div class="flex flex-col gap-1.5">
               ${regionsHTML}
           </div>
       </div>
@@ -257,6 +278,33 @@ class GeoQuizPlugin {
     this.clearHighlights();
     this.updateSettings(activeSettings); // Re-apply styles
     this.resetZoom();
+  }
+
+  renderResultActions(container) {
+    if (!container) return;
+    container.innerHTML = `
+        <button onclick="mpViewMap()" class="w-full bg-slate-700 hover:bg-slate-600 text-white py-2.5 rounded-xl font-bold transition-colors">View Map</button>
+    `;
+  }
+
+  getActiveItemsDescription(settings) {
+    const regionLabels = {
+        'north-america': 'North America',
+        'south-america': 'South America',
+        'europe': 'Europe',
+        'asia': 'Asia',
+        'africa-north': 'Africa: Above Equator',
+        'africa-south': 'Africa: Below Equator',
+        'oceania': 'Oceania',
+    };
+    const activeNames = Object.keys(settings.regions)
+        .filter(r => settings.regions[r])
+        .map(r => regionLabels[r]);
+    
+    if(activeNames.length > 0 && activeNames.length < Object.keys(regionLabels).length) {
+        return activeNames.join(', ');
+    }
+    return '';
   }
 
   clearHighlights() {

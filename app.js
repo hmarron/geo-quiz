@@ -16,6 +16,12 @@ async function init(andThen) {
     if (!activePlugin) activePlugin = Registry.getActivePlugin();
     if (!activeMode) activeMode = Registry.getMode('solo');
 
+    // Update global UI with plugin metadata
+    const titleEl = document.getElementById('app-title');
+    const subtitleEl = document.getElementById('app-subtitle');
+    if (titleEl) titleEl.textContent = activePlugin.title || activePlugin.name;
+    if (subtitleEl) subtitleEl.textContent = activePlugin.subtitle || '';
+
     if (dataReady) { if (andThen) andThen(); return; }
     if (dataLoading) {
         const wait = setInterval(() => { if (dataReady) { clearInterval(wait); if (andThen) andThen(); } }, 100);
