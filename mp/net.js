@@ -370,7 +370,7 @@ function mpApplySettings(msg) {
     mpQuestionIdx = 0;
     activeMode = Registry.getMode(msg.mpMode);
     
-    activeSettings.regions = msg.settings.regions;
+    activeSettings.filters = msg.settings.filters;
     activeSettings.showBorders = msg.settings.showBorders;
     activeSettings.gameMode = msg.settings.gameMode;
     
@@ -409,11 +409,11 @@ function mpStartGame() {
     mpMode = document.getElementById('mp-mode-select').value;
     activeMode = Registry.getMode(mpMode);
 
-    if (activeSettings.regions) {
-        for (const regionId in activeSettings.regions) {
-            const regionCheckbox = document.getElementById(`mp-check-${regionId}`);
-            if (regionCheckbox) {
-                activeSettings.regions[regionId] = regionCheckbox.checked;
+    if (activeSettings.filters) {
+        for (const filterId in activeSettings.filters) {
+            const filterCheckbox = document.getElementById(`mp-check-${filterId}`);
+            if (filterCheckbox) {
+                activeSettings.filters[filterId] = filterCheckbox.checked;
             }
         }
     }

@@ -14,19 +14,19 @@ button {
     background: radial-gradient(circle at center, #1a3a6e 0%, #0b1d3a 100%);
     border-radius: 1rem;
 }
-.country {
+.quiz-item {
     stroke-width: 0.5px;
     transition: fill 0.3s ease, stroke 0.3s ease;
     outline: none;
     fill: #374151;
     stroke: #6b7280;
 }
-.country-excluded {
+.quiz-item-excluded {
     fill: #0f172a;
     opacity: 0.4;
     pointer-events: none;
 }
-.country-highlight {
+.quiz-item-highlight {
     fill: #fbbf24 !important;
     stroke: none !important;
 }

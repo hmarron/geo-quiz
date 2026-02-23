@@ -59,7 +59,7 @@ class GeoQuizPlugin {
   getSettingsView() {
     const regionsHTML = this.initialRegions.map(r => `
         <label class="flex items-center gap-3 p-3 bg-slate-700/50 rounded-xl cursor-pointer hover:bg-slate-700 transition-colors">
-            <input type="checkbox" id="check-${r.id}" ${activeSettings.regions[r.id] ? 'checked' : ''}
+            <input type="checkbox" id="check-${r.id}" ${activeSettings.filters[r.id] ? 'checked' : ''}
                    class="w-5 h-5 rounded border-slate-600 bg-slate-800 text-blue-500 focus:ring-blue-500">
             <span class="text-sm font-medium text-slate-200">${r.label}</span>
         </label>
@@ -86,7 +86,7 @@ class GeoQuizPlugin {
   getLobbySettingsView() {
     const regionsHTML = this.initialRegions.map(r => `
         <label class="flex items-center gap-2 p-2 bg-slate-700/50 rounded-lg cursor-pointer hover:bg-slate-700 transition-colors">
-            <input type="checkbox" id="mp-check-${r.id}" ${activeSettings.regions[r.id] ? 'checked' : ''}
+            <input type="checkbox" id="mp-check-${r.id}" ${activeSettings.filters[r.id] ? 'checked' : ''}
                    class="w-4 h-4 rounded border-slate-600 bg-slate-800 text-blue-500 focus:ring-blue-500">
             <span class="text-xs font-medium text-slate-200">${r.label}</span>
         </label>
@@ -160,8 +160,8 @@ class GeoQuizPlugin {
 
   renderQuizView(container) {
     container.innerHTML = `
-        <div id="country-overlay" class="absolute inset-0 flex items-center justify-center pointer-events-none z-10 hidden">
-            <div id="country-name-display" class="text-3xl sm:text-4xl font-bold px-6 py-3 rounded-xl bg-black/50 backdrop-blur-sm"></div>
+        <div id="item-overlay" class="absolute inset-0 flex items-center justify-center pointer-events-none z-10 hidden">
+            <div id="item-name-display" class="text-3xl sm:text-4xl font-bold px-6 py-3 rounded-xl bg-black/50 backdrop-blur-sm"></div>
         </div>
         <div class="zoom-controls">
             <button id="btn-zoom-in" class="btn-zoom">+</button>
@@ -221,8 +221,8 @@ class GeoQuizPlugin {
   }
 
   showOverlay(name, isCorrect) {
-    const overlay = document.getElementById('country-overlay');
-    const nameDisplay = document.getElementById('country-name-display');
+    const overlay = document.getElementById('item-overlay');
+    const nameDisplay = document.getElementById('item-name-display');
     if (!overlay || !nameDisplay) return;
     nameDisplay.textContent = name;
     nameDisplay.className = `text-3xl sm:text-4xl font-bold px-6 py-3 rounded-xl bg-black/50 backdrop-blur-sm ${isCorrect ? 'text-green-400' : 'text-red-400'}`;
@@ -232,14 +232,14 @@ class GeoQuizPlugin {
 
   updateSettings(settings) {
     this.g.selectAll("path")
-      .attr("class", d => this._isAllowed(d, settings) ? "country" : "country country-excluded")
+      .attr("class", d => this._isAllowed(d, settings) ? "quiz-item" : "quiz-item quiz-item-excluded")
       .style("stroke", settings.showBorders ? this.COLOR_BORDER : "none")
       .style("fill", d => this._isAllowed(d, settings) ? this.COLOR_ACTIVE_FILL : this.COLOR_EXCLUDED_FILL);
   }
 
   displayQuestion(item) {
     if (!item) return;
-    this.g.selectAll(".country").classed("country-highlight", d => d === item);
+    this.g.selectAll(".quiz-item").classed("quiz-item-highlight", d => d === item);
 
     try {
         const bounds = this.path.bounds(item);
@@ -287,7 +287,7 @@ class GeoQuizPlugin {
     `;
   }
 
-  getActiveItemsDescription(settings) {
+  getScoreSettingsDescription(settings) {
     const regionLabels = {
         'north-america': 'North America',
         'south-america': 'South America',
@@ -297,8 +297,8 @@ class GeoQuizPlugin {
         'africa-south': 'Africa: Below Equator',
         'oceania': 'Oceania',
     };
-    const activeNames = Object.keys(settings.regions)
-        .filter(r => settings.regions[r])
+    const activeNames = Object.keys(settings.filters)
+        .filter(r => settings.filters[r])
         .map(r => regionLabels[r]);
     
     if(activeNames.length > 0 && activeNames.length < Object.keys(regionLabels).length) {
@@ -334,9 +334,9 @@ class GeoQuizPlugin {
   }
 
   _isAllowed(feature, settings) {
-    if (!settings || !settings.regions) return true; // Default to allowed if settings are missing
+    if (!settings || !settings.filters) return true; // Default to allowed if settings are missing
     const regionId = this._getCountryRegionId(feature);
-    return regionId && settings.regions[regionId];
+    return regionId && settings.filters[regionId];
   }
 
   _getAcceptableNames(feature) {

@@ -23,51 +23,51 @@ const LandGrabMode = {
         Object.keys(mpPlayers).forEach(pid => this.assignNext(pid));
     },
 
-    assignNext(peerId, wrongIso = null) {
-        if (wrongIso) this.pool.push(wrongIso);
+    assignNext(peerId, wrongItemId = null) {
+        if (wrongItemId) this.pool.push(wrongItemId);
 
         if (this.pool.length > 0) {
             const idx = Math.floor(Math.random() * this.pool.length);
-            const iso = this.pool[idx];
+            const itemId = this.pool[idx];
             this.pool.splice(idx, 1);
-            this.assignments[peerId] = iso;
+            this.assignments[peerId] = itemId;
 
             const remaining = this.pool.length;
             document.getElementById('remaining').innerText = remaining;
             broadcast({ type: 'land-grab-pool', remaining });
 
-            this.sendAssignment(peerId, iso, remaining);
+            this.sendAssignment(peerId, itemId, remaining);
             return;
         }
 
         const raceTargets = Object.entries(this.assignments)
-            .filter(([pid, iso]) => pid !== peerId && iso !== null && !this.claimed[iso])
-            .map(([, iso]) => iso);
+            .filter(([pid, itemId]) => pid !== peerId && itemId !== null && !this.claimed[itemId])
+            .map(([, itemId]) => itemId);
 
         if (raceTargets.length > 0) {
-            const iso = raceTargets[Math.floor(Math.random() * raceTargets.length)];
-            this.assignments[peerId] = iso;
-            this.sendAssignment(peerId, iso, 0);
+            const itemId = raceTargets[Math.floor(Math.random() * raceTargets.length)];
+            this.assignments[peerId] = itemId;
+            this.sendAssignment(peerId, itemId, 0);
             return;
         }
 
         this.assignments[peerId] = null;
     },
 
-    sendAssignment(peerId, iso, remaining) {
+    sendAssignment(peerId, itemId, remaining) {
         if (peerId === mpMyPeerId) {
-            currentTarget = activePlugin.getItemById(iso) || null;
+            currentTarget = activePlugin.getItemById(itemId) || null;
             renderQuestion();
         } else {
             const conn = mpConns[peerId];
-            if (conn) try { conn.send({ type: 'land-grab-next', iso, remaining }); } catch(e) {}
+            if (conn) try { conn.send({ type: 'land-grab-next', itemId, remaining }); } catch(e) {}
         }
     },
 
-    claim(peerId, iso) {
-        if (this.claimed[iso]) return false;
+    claim(peerId, itemId) {
+        if (this.claimed[itemId]) return false;
 
-        this.claimed[iso] = peerId;
+        this.claimed[itemId] = peerId;
         if (peerId !== mpMyPeerId && mpPlayers[peerId]) mpPlayers[peerId].score++;
         const playerScore = peerId === mpMyPeerId ? score : mpPlayers[peerId].score;
         
@@ -75,15 +75,15 @@ const LandGrabMode = {
 
         if (typeof activePlugin.colorItem === 'function') {
             activePlugin.clearHighlights(); // Clear the yellow highlight from the item being claimed
-            activePlugin.colorItem(iso, mpPlayerColors[peerId]);
+            activePlugin.colorItem(itemId, mpPlayerColors[peerId]);
         }
 
-        broadcast({ type: 'land-grab-claimed', peerId, iso, isLast: isLastClaim });
+        broadcast({ type: 'land-grab-claimed', peerId, itemId, isLast: isLastClaim });
         broadcast({ type: 'player-score', peerId, score: playerScore,
             wrong: peerId === mpMyPeerId ? wrongCount : mpPlayers[peerId]?.wrong ?? 0 });
 
-        Object.entries(this.assignments).forEach(([pid, assignedIso]) => {
-            if (pid !== peerId && assignedIso === iso) {
+        Object.entries(this.assignments).forEach(([pid, assignedItemId]) => {
+            if (pid !== peerId && assignedItemId === itemId) {
                 this.assignNext(pid);
             }
         });
@@ -101,14 +101,14 @@ const LandGrabMode = {
 
     onAnswer(correct) {
         const targetName = activePlugin.getCorrectAnswer(currentTarget);
-        const iso = activePlugin.getItemId(currentTarget);
+        const itemId = activePlugin.getItemId(currentTarget);
         canAnswer = false;
 
         if (correct) {
             score++;
             document.getElementById('score').innerText = score;
             activePlugin.showOverlay(targetName, true);
-            if (mpIsHost) this.claim(mpMyPeerId, iso);
+            if (mpIsHost) this.claim(mpMyPeerId, itemId);
         } else {
             wrongCount++;
             document.getElementById('wrong-count').innerText = wrongCount;
@@ -116,9 +116,9 @@ const LandGrabMode = {
         }
 
         if (mpIsHost) {
-            setTimeout(() => this.assignNext(mpMyPeerId, correct ? null : iso), correct ? 700 : 800);
+            setTimeout(() => this.assignNext(mpMyPeerId, correct ? null : itemId), correct ? 700 : 800);
         } else {
-            sendToHost({ type: 'answered', correct, iso });
+            sendToHost({ type: 'answered', correct, itemId });
         }
     },
 
@@ -130,17 +130,17 @@ const LandGrabMode = {
         switch (msg.type) {
             case 'answered': {
                 if (!mpIsHost) return;
-                if (msg.correct && msg.iso) {
-                    this.claim(fromId, msg.iso);
+                if (msg.correct && msg.itemId) {
+                    this.claim(fromId, msg.itemId);
                 }
-                setTimeout(() => this.assignNext(fromId, msg.correct ? null : msg.iso), msg.correct ? 700 : 800);
+                setTimeout(() => this.assignNext(fromId, msg.correct ? null : msg.itemId), msg.correct ? 700 : 800);
                 break;
             }
 
             case 'land-grab-next': {
                 document.getElementById('remaining').innerText = msg.remaining;
                 if (!startTime) startTimer();
-                const item = msg.iso ? activePlugin.getItemById(msg.iso) : null;
+                const item = msg.itemId ? activePlugin.getItemById(msg.itemId) : null;
                 currentTarget = item || null;
                 if (currentTarget) {
                     renderQuestion();
@@ -157,9 +157,9 @@ const LandGrabMode = {
                 break;
 
             case 'land-grab-claimed':
-                this.claimed[msg.iso] = msg.peerId;
+                this.claimed[msg.itemId] = msg.peerId;
                 if (typeof activePlugin.colorItem === 'function') {
-                    activePlugin.colorItem(msg.iso, mpPlayerColors[msg.peerId]);
+                    activePlugin.colorItem(msg.itemId, mpPlayerColors[msg.peerId]);
                 }
                 if (msg.isLast && !mpIsHost) {
                     sendToHost({ type: 'final-round-processed' });

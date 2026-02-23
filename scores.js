@@ -2,17 +2,6 @@
 
 const SCORES_KEY = 'geo-quiz-scores';
 
-// This is duplicated in settings.js. A future refactor could move this to a shared constants file.
-const regionLabels = {
-    'north-america': 'North America',
-    'south-america': 'South America',
-    'europe': 'Europe',
-    'asia': 'Asia',
-    'africa-north': 'Africa: Above Equator',
-    'africa-south': 'Africa: Below Equator',
-    'oceania': 'Oceania',
-};
-
 function saveScore(elapsed) {
     const entry = {
         score,
@@ -20,10 +9,7 @@ function saveScore(elapsed) {
         hints: hintCount,
         time: elapsed,
         date: new Date().toISOString(),
-        settings: {
-            mode: activeSettings.gameMode,
-            regions: Object.keys(activeSettings.regions).filter(r => activeSettings.regions[r])
-        }
+        settings: JSON.parse(JSON.stringify(activeSettings))
     };
     const scores = loadScores();
     scores.push(entry);
@@ -58,7 +44,9 @@ function toggleScores() {
     } else {
         list.innerHTML = scores.map((s, i) => {
             const accuracy = (s.score + s.wrong) > 0 ? Math.round(s.score / (s.score + s.wrong) * 100) : 0;
-            const regionDisplay = s.settings.regions.map(id => regionLabels[id] ?? id).join(', ');
+            const settingsDesc = (activePlugin && typeof activePlugin.getScoreSettingsDescription === 'function') 
+                ? activePlugin.getScoreSettingsDescription(s.settings) 
+                : '';
             const date = new Date(s.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
             return `
                 <div class="flex items-start gap-3 p-3 bg-slate-700/30 rounded-xl">
@@ -71,7 +59,7 @@ function toggleScores() {
                             <span class="text-slate-400">${accuracy}%</span>
                             ${s.hints > 0 ? `<span class="text-amber-500">${s.hints} hint${s.hints !== 1 ? 's' : ''}</span>` : ''}
                         </div>
-                        <div class="text-xs text-slate-500 mt-0.5 truncate">${s.settings.mode === 'hard' ? 'Hard' : 'Easy'} · ${regionDisplay} · ${date}</div>
+                        <div class="text-xs text-slate-500 mt-0.5 truncate">${s.settings.gameMode === 'hard' ? 'Hard' : 'Easy'}${settingsDesc ? ' · ' + settingsDesc : ''} · ${date}</div>
                     </div>
                 </div>`;
         }).join('');
@@ -90,11 +78,12 @@ function showFinishModal() {
     document.getElementById('final-time').textContent = formatTime(elapsed);
     document.getElementById('final-accuracy').textContent = `${accuracy}% accuracy · ${hintCount} hint${hintCount !== 1 ? 's' : ''}`;
 
-    const activeRegions = Object.keys(activeSettings.regions).filter(r => activeSettings.regions[r]).sort().join(',');
+    const activeFilters = Object.keys(activeSettings.filters || {}).filter(f => activeSettings.filters[f]).sort().join(',');
     const allScores = loadScores();
     const sameSettings = allScores.filter(s => {
-        return s.settings.mode === activeSettings.gameMode &&
-               s.settings.regions.slice().sort().join(',') === activeRegions;
+        const sFilters = Object.keys(s.settings.filters || {}).filter(f => s.settings.filters[f]).sort().join(',');
+        return s.settings.gameMode === activeSettings.gameMode &&
+               sFilters === activeFilters;
     });
     const best = sameSettings[0];
     const bestEl = document.getElementById('final-best');

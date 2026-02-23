@@ -5,7 +5,7 @@
 const activeSettings = {
     gameMode: 'easy',
     showBorders: true,
-    regions: {
+    filters: {
         'north-america': true,
         'south-america': true,
         'europe': true,
@@ -59,12 +59,12 @@ function applySettings(startNew = true) {
         activeSettings.showBorders = bordersCheckbox.checked;
     }
 
-    // Dynamic region application
-    if (activeSettings.regions) {
-        for (const regionId in activeSettings.regions) {
-            const regionCheckbox = document.getElementById(`check-${regionId}`);
-            if (regionCheckbox) {
-                activeSettings.regions[regionId] = regionCheckbox.checked;
+    // Dynamic filter application
+    if (activeSettings.filters) {
+        for (const filterId in activeSettings.filters) {
+            const filterCheckbox = document.getElementById(`check-${filterId}`);
+            if (filterCheckbox) {
+                activeSettings.filters[filterId] = filterCheckbox.checked;
             }
         }
     }
@@ -77,8 +77,8 @@ function applySettings(startNew = true) {
 
 function updateActiveLabel() {
     let desc = '';
-    if (activePlugin && typeof activePlugin.getActiveItemsDescription === 'function') {
-        desc = activePlugin.getActiveItemsDescription(activeSettings);
+    if (activePlugin && typeof activePlugin.getScoreSettingsDescription === 'function') {
+        desc = activePlugin.getScoreSettingsDescription(activeSettings);
     }
     
     const label = document.getElementById('active-regions-label');

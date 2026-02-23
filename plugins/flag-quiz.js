@@ -44,7 +44,7 @@ class FlagQuizPlugin {
   getSettingsView() {
     const regionsHTML = this.regions.map(r => `
         <label class="flex items-center gap-3 p-3 bg-slate-700/50 rounded-xl cursor-pointer hover:bg-slate-700 transition-colors">
-            <input type="checkbox" id="check-${r.id}" ${activeSettings.regions[r.id] ? 'checked' : ''}
+            <input type="checkbox" id="check-${r.id}" ${activeSettings.filters[r.id] ? 'checked' : ''}
                    class="w-5 h-5 rounded border-slate-600 bg-slate-800 text-blue-500 focus:ring-blue-500">
             <span class="text-sm font-medium text-slate-200">${r.label}</span>
         </label>
@@ -63,7 +63,7 @@ class FlagQuizPlugin {
   getLobbySettingsView() {
     const regionsHTML = this.regions.map(r => `
         <label class="flex items-center gap-2 p-2 bg-slate-700/50 rounded-lg cursor-pointer hover:bg-slate-700 transition-colors">
-            <input type="checkbox" id="mp-check-${r.id}" ${activeSettings.regions[r.id] ? 'checked' : ''}
+            <input type="checkbox" id="mp-check-${r.id}" ${activeSettings.filters[r.id] ? 'checked' : ''}
                    class="w-4 h-4 rounded border-slate-600 bg-slate-800 text-blue-500 focus:ring-blue-500">
             <span class="text-xs font-medium text-slate-200">${r.label}</span>
         </label>
@@ -238,7 +238,7 @@ class FlagQuizPlugin {
     }
   }
 
-  getActiveItemsDescription(settings) {
+  getScoreSettingsDescription(settings) {
     const regionLabels = {
         'north-america': 'North America',
         'south-america': 'South America',
@@ -247,8 +247,8 @@ class FlagQuizPlugin {
         'africa': 'Africa',
         'oceania': 'Oceania'
     };
-    const activeNames = Object.keys(settings.regions)
-        .filter(r => settings.regions[r])
+    const activeNames = Object.keys(settings.filters)
+        .filter(r => settings.filters[r])
         .map(r => regionLabels[r]);
     
     if(activeNames.length > 0 && activeNames.length < Object.keys(regionLabels).length) {
@@ -259,16 +259,16 @@ class FlagQuizPlugin {
 
   // Internal Helpers (similar to GeoQuizPlugin)
   _isAllowed(feature, settings) {
-    if (!settings || !settings.regions) return true;
+    if (!settings || !settings.filters) return true;
     const props = feature.properties;
     const cont = (props.CONTINENT || props.continent || "").toLowerCase();
     
-    if (cont.includes("north america") && settings.regions['north-america']) return true;
-    if (cont.includes("south america") && settings.regions['south-america']) return true;
-    if (cont.includes("europe") && settings.regions['europe']) return true;
-    if (cont.includes("asia") && settings.regions['asia']) return true;
-    if (cont.includes("africa") && settings.regions['africa']) return true;
-    if (cont.includes("oceania") && settings.regions['oceania']) return true;
+    if (cont.includes("north america") && settings.filters['north-america']) return true;
+    if (cont.includes("south america") && settings.filters['south-america']) return true;
+    if (cont.includes("europe") && settings.filters['europe']) return true;
+    if (cont.includes("asia") && settings.filters['asia']) return true;
+    if (cont.includes("africa") && settings.filters['africa']) return true;
+    if (cont.includes("oceania") && settings.filters['oceania']) return true;
     
     return false;
   }
