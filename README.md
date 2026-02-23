@@ -32,3 +32,11 @@ The engine is designed to be easily extended with new content and mechanics. Che
 - **Styling**: Tailwind CSS
 - **Multiplayer**: PeerJS (WebRTC)
 - **Data**: GeoJSON / JSON
+
+## Troubleshooting
+
+### Clearing the Cache
+Because this app uses a Service Worker for offline support, your browser might cache older versions of the code. If you experience issues after an update:
+1. Perform a **Hard Refresh** (Cmd+Shift+R on Mac, Ctrl+F5 on Windows).
+2. If using as a PWA on mobile, close the app entirely and restart it.
+3. If issues persist, clear your browser's "Site Data" or "Cache" for the URL.

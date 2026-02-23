@@ -67,10 +67,13 @@ function createRoom() {
     document.getElementById('mp-name-input').disabled = true;
     const code = mpGenCode();
     mpIsHost = true;
-    mpPeer = new Peer(MP_PREFIX + code, { debug: 0 });
+    console.log(`[MP] Creating room with code: ${code}`);
+    mpPeer = new Peer(MP_PREFIX + code, { debug: 3 });
 
     mpPeer.on('error', (err) => {
+        console.error('[MP] PeerJS error:', err.type, err);
         if (err.type === 'unavailable-id') {
+            console.warn('[MP] ID unavailable, retrying...');
             mpPeer.destroy();
             mpPeer = null;
             mpIsHost = false;
@@ -78,11 +81,12 @@ function createRoom() {
             document.getElementById('btn-join-room').disabled = false;
             createRoom();
         } else {
-            console.error('PeerJS error:', err);
+            console.error('[MP] Fatal PeerJS error:', err);
         }
     });
 
     mpPeer.on('open', (id) => {
+        console.log('[MP] Host Peer open. ID:', id);
         mpMyPeerId = id;
         mpPlayerColors[id] = mpNextColor();
         mpPlayers[id] = { name: mpLocalName, score: 0, wrong: 0 };
@@ -95,16 +99,24 @@ function createRoom() {
     });
 
     mpPeer.on('connection', (conn) => {
+        console.log('[MP] Incoming connection from:', conn.peer);
         onGuestJoined(conn);
     });
 }
 
 function onGuestJoined(conn) {
     conn.on('open', () => {
+        console.log('[MP] Connection open with guest:', conn.peer);
         mpConns[conn.peer] = conn;
         conn.on('data', (msg) => handleMpMessage(msg, conn.peer));
-        conn.on('close', () => mpHandleDisconnect(conn.peer));
-        conn.on('error', () => mpHandleDisconnect(conn.peer));
+        conn.on('close', () => {
+            console.log('[MP] Guest connection closed:', conn.peer);
+            mpHandleDisconnect(conn.peer);
+        });
+        conn.on('error', (err) => {
+            console.error('[MP] Guest connection error:', conn.peer, err);
+            mpHandleDisconnect(conn.peer);
+        });
     });
 }
 
@@ -121,6 +133,7 @@ function joinRoom() {
     document.getElementById('mp-name-input').disabled = true;
 
     function showJoinError(msg) {
+        console.error('[MP] Join error:', msg);
         errEl.textContent = msg;
         errEl.classList.remove('hidden');
         connectBtn.textContent = 'Connect';
@@ -130,9 +143,13 @@ function joinRoom() {
     }
 
     mpIsHost = false;
-    mpPeer = new Peer({ debug: 0 });
+    console.log(`[MP] Attempting to join room: ${code}`);
+    mpPeer = new Peer({ debug: 3 });
 
-    const timeout = setTimeout(() => showJoinError('Timed out. Check the code and try again.'), 10000);
+    const timeout = setTimeout(() => {
+        console.warn('[MP] Join attempt timed out after 10s');
+        showJoinError('Timed out. Check the code and try again.');
+    }, 10000);
 
     mpPeer.on('error', (err) => {
         clearTimeout(timeout);
@@ -140,15 +157,24 @@ function joinRoom() {
     });
 
     mpPeer.on('open', (id) => {
+        console.log('[MP] Guest Peer open. ID:', id);
         mpMyPeerId = id;
-        const conn = mpPeer.connect(MP_PREFIX + code, { reliable: true });
+        const hostId = MP_PREFIX + code;
+        console.log(`[MP] Connecting to host: ${hostId}`);
+        const conn = mpPeer.connect(hostId, {
+            metadata: { name: mpLocalName },
+            serialization: 'json',
+            reliable: false
+        });
 
-        conn.on('error', () => {
+        conn.on('error', (err) => {
+            console.error('[MP] Connection object error:', err);
             clearTimeout(timeout);
             showJoinError('Could not find room. Check the code and try again.');
         });
 
         conn.on('open', () => {
+            console.log('[MP] Connected to host!');
             clearTimeout(timeout);
             onConnectedToHost(conn);
         });
@@ -158,8 +184,15 @@ function joinRoom() {
 function onConnectedToHost(conn) {
     mpConns[conn.peer] = conn;
     conn.on('data', (msg) => handleMpMessage(msg, conn.peer));
-    conn.on('close', () => mpGuestHandleHostDisconnect());
-    conn.on('error', () => mpGuestHandleHostDisconnect());
+    conn.on('close', () => {
+        console.log('[MP] Host connection closed');
+        mpGuestHandleHostDisconnect();
+    });
+    conn.on('error', (err) => {
+        console.error('[MP] Host connection error:', err);
+        mpGuestHandleHostDisconnect();
+    });
+    console.log('[MP] Sending ready message to host');
     sendToHost({ type: 'ready', name: mpLocalName });
     const connectBtn = document.querySelector('#mp-join-input button');
     if (connectBtn) { connectBtn.textContent = 'Connected ✓'; connectBtn.disabled = true; }
@@ -169,17 +202,21 @@ function onConnectedToHost(conn) {
 }
 
 function broadcast(msg) {
-    Object.values(mpConns).forEach(c => { try { c.send(msg); } catch(e) {} });
+    console.log('[MP] Broadcasting message:', msg.type, msg);
+    Object.values(mpConns).forEach(c => { try { c.send(msg); } catch(e) { console.error(`[MP] Failed to send to ${c.peer}`, e); } });
 }
 
 function sendToHost(msg) {
+    console.log('[MP] Sending message to host:', msg.type, msg);
     const conn = Object.values(mpConns)[0];
-    if (conn) { try { conn.send(msg); } catch(e) {} }
+    if (conn) { try { conn.send(msg); } catch(e) { console.error('[MP] Failed to send to host', e); } }
+    else { console.error('[MP] Cannot send to host: No connection found'); }
 }
 
 // ─── Message router ───────────────────────────────────────────────────────────
 
 async function handleMpMessage(msg, fromId) {
+    console.log(`[MP] Received message: ${msg.type} from ${fromId}`, msg);
     switch (msg.type) {
         case 'ready':
             if (!mpIsHost) return;
@@ -246,17 +283,17 @@ async function handleMpMessage(msg, fromId) {
 
         case 'player-left': {
             const leftName = mpPlayers[msg.peerId]?.name || 'A player';
-            delete mpConns[peerId];
-            delete mpPlayers[peerId];
-            delete mpRoundAnswered[peerId];
-            delete mpRoundAcked[peerId];
-            broadcast({ type: 'player-left', peerId });
-            mpShowToast(`${name} left the game`);
+            delete mpConns[msg.peerId];
+            delete mpPlayers[msg.peerId];
+            delete mpRoundAnswered[msg.peerId];
+            delete mpRoundAcked[msg.peerId];
+            broadcast({ type: 'player-left', peerId: msg.peerId });
+            mpShowToast(`${leftName} left the game`);
             if (mpIsActive) {
                 if (mpMode === 'race') {
                     mpCheckAllAcked();
                 } else if (mpMode === 'compete') {
-                    if (mpCompeteFinished[peerId]) delete mpCompeteFinished[peerId];
+                    if (mpCompeteFinished[msg.peerId]) delete mpCompeteFinished[msg.peerId];
                     const allDone = Object.keys(mpPlayers).every(pid => mpCompeteFinished[pid]);
                     if (allDone && Object.keys(mpPlayers).length > 0) {
                         const results = Object.entries(mpPlayers).map(([pid, p]) => ({

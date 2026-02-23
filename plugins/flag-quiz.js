@@ -6,7 +6,7 @@ class FlagQuizPlugin {
     this.name = 'Flag Quiz';
     this.title = 'Flag Challenge';
     this.subtitle = 'Identify world flags';
-    this.supportedModes = ['solo', 'race', 'compete'];
+    this.supportedModes = ['solo', 'race', 'compete', 'land-grab'];
 
     this.fullDataset = [];
     this.container = null;
