@@ -331,7 +331,18 @@
     <script src="app.js"></script>
     <script>
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('./sw.js');
+            navigator.serviceWorker.register('./sw.js').then(reg => {
+                // Check for updates every time the page is focused/visited
+                reg.update();
+            });
+
+            // Refresh the page automatically when a new service worker takes over
+            let refreshing = false;
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (refreshing) return;
+                refreshing = true;
+                window.location.reload();
+            });
         }
     </script>
 </body>
