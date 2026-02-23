@@ -1,0 +1,10 @@
+id,answer,questionMedia,categories,acceptableAnswers
+q1,Paris,What is the capital of France?,Geography,paris;the capital of france
+q2,Elephant,https://images.unsplash.com/photo-1557050543-4d5f4e07ef46?w=640,Animals,elephant;elefante
+q3,Madrid,What is the capital of Spain?,Geography,madrid
+q4,Mars,The "Red Planet" in our solar system.,Space,mars;marte
+q5,Eiffel Tower,https://images.unsplash.com/photo-1511739001486-6bfe10ce785f?w=640,Landmarks,eiffel tower;la tour eiffel
+q6,Jupiter,The largest planet in our solar system.,Space,jupiter
+q7,Great Wall of China,https://images.unsplash.com/photo-1508804185872-d7badad00f7d?w=640,Landmarks,great wall;china wall
+q8,42,The Answer to Life the Universe and Everything.,Logic,42;forty two
+q9,Lion,https://images.unsplash.com/photo-1546182990-dffeafbe841d?w=640,Animals,lion;leon

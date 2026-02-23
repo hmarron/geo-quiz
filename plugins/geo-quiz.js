@@ -266,7 +266,7 @@ class GeoQuizPlugin {
   }
 
   updateViewOnAnswer(item, correct, mpPlayerColor) {
-    const selection = this.g.selectAll(".country").filter(d => d === item);
+    const selection = this.g.selectAll("path").filter(d => d === item);
     if (mpPlayerColor) {
         selection.style("fill", mpPlayerColor);
     } else {

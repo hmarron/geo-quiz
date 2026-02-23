@@ -158,12 +158,91 @@ function togglePluginPicker() {
     modal.style.display = modal.style.display === 'flex' ? 'none' : 'flex';
 }
 
+function toggleCustomQuizModal() {
+    const modal = document.getElementById('custom-quiz-modal');
+    if (!modal) return;
+    modal.style.display = modal.style.display === 'flex' ? 'none' : 'flex';
+}
+
 function selectPlugin(id) {
     if (activePlugin && activePlugin.id === id) return;
     
     changePlugin(id).then(() => {
         togglePluginPicker();
     });
+}
+
+function triggerCsvUpload() {
+    document.getElementById('csv-upload-input').click();
+}
+
+async function handleCsvUrlLoad() {
+    const input = document.getElementById('csv-url-input');
+    const url = input.value.trim();
+    if (!url) return;
+
+    // Create a new custom plugin instance
+    const customPlugin = new CSVQuizPlugin({
+        id: 'custom-csv-' + Date.now(),
+        name: url.split('/').pop().replace('.csv', '') || 'URL Quiz',
+        title: 'Remote Quiz',
+        subtitle: 'Quiz loaded from URL',
+        csvUrl: url,
+        mapping: {
+            id: 'id',
+            answer: 'answer',
+            questionMedia: 'questionMedia',
+            categories: 'categories'
+        }
+    });
+
+    Registry.registerPlugin(customPlugin);
+    await changePlugin(customPlugin.id);
+    toggleCustomQuizModal();
+    togglePluginPicker();
+    
+    if (typeof showToast === 'function') {
+        showToast(`Loaded quiz from URL`);
+    }
+    input.value = '';
+}
+
+async function handleCsvUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        const csvRaw = e.target.result;
+        
+        // Create a new custom plugin instance
+        const customPlugin = new CSVQuizPlugin({
+            id: 'custom-csv-' + Date.now(),
+            name: file.name.replace('.csv', ''),
+            title: file.name.replace('.csv', ''),
+            subtitle: 'User uploaded quiz',
+            csvRaw: csvRaw,
+            mapping: {
+                id: 'id',
+                answer: 'answer',
+                questionMedia: 'questionMedia',
+                categories: 'categories'
+            }
+        });
+
+        Registry.registerPlugin(customPlugin);
+        await changePlugin(customPlugin.id);
+        toggleCustomQuizModal();
+        togglePluginPicker();
+        
+        if (typeof showToast === 'function') {
+            showToast(`Loaded quiz: ${customPlugin.name}`);
+        }
+    };
+    reader.readAsText(file);
+    
+    // Reset input so same file can be uploaded again if needed
+    event.target.value = '';
 }
 
 function changePlugin(id) {
@@ -173,7 +252,20 @@ function changePlugin(id) {
     
     // If we are a host in a lobby, tell others
     if (typeof mpIsHost !== 'undefined' && mpIsHost && typeof broadcast === 'function') {
-        broadcast({ type: 'plugin-change', pluginId: id });
+        const msg = { type: 'plugin-change', pluginId: id };
+        // If it's a dynamic custom plugin, we need to send the whole config
+        if (id.startsWith('custom-csv-') && activePlugin instanceof CSVQuizPlugin) {
+            msg.config = {
+                id: activePlugin.id,
+                name: activePlugin.name,
+                title: activePlugin.title,
+                subtitle: activePlugin.subtitle,
+                csvRaw: activePlugin.csvRaw,
+                csvUrl: activePlugin.csvUrl,
+                mapping: activePlugin.mapping
+            };
+        }
+        broadcast(msg);
     }
     
     // Clear the container

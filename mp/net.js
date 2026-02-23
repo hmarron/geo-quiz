@@ -222,15 +222,32 @@ function handleMpMessage(msg, fromId) {
             if (!mpIsHost) return;
             mpPlayerColors[fromId] = mpNextColor();
             mpPlayers[fromId] = { name: msg.name || 'Guest', score: 0, wrong: 0 };
+            
+            const welcomeMsg = {
+                type: 'welcome',
+                pluginId: activePlugin.id,
+                players: Object.fromEntries(
+                    Object.entries(mpPlayers).map(([pid, p]) => [pid, { name: p.name, color: mpPlayerColors[pid] }])
+                )
+            };
+
+            // If it's a dynamic custom plugin, send config
+            if (activePlugin.id.startsWith('custom-csv-') && activePlugin instanceof CSVQuizPlugin) {
+                welcomeMsg.config = {
+                    id: activePlugin.id,
+                    name: activePlugin.name,
+                    title: activePlugin.title,
+                    subtitle: activePlugin.subtitle,
+                    csvRaw: activePlugin.csvRaw,
+                    csvUrl: activePlugin.csvUrl,
+                    mapping: activePlugin.mapping
+                };
+            }
+
             try {
-                mpConns[fromId].send({
-                    type: 'welcome',
-                    pluginId: activePlugin.id,
-                    players: Object.fromEntries(
-                        Object.entries(mpPlayers).map(([pid, p]) => [pid, { name: p.name, color: mpPlayerColors[pid] }])
-                    )
-                });
+                mpConns[fromId].send(welcomeMsg);
             } catch(e) {}
+            
             mpUpdateLobbyList();
             broadcast({ type: 'player-joined', peerId: fromId, name: mpPlayers[fromId].name, color: mpPlayerColors[fromId], playerCount: Object.keys(mpPlayers).length });
             mpSetStatus(`${Object.keys(mpPlayers).length} player(s) in lobby`);
@@ -304,7 +321,7 @@ function handleMpMessage(msg, fromId) {
             delete mpRoundAnswered[msg.peerId];
             delete mpRoundAcked[msg.peerId];
             broadcast({ type: 'player-left', peerId: msg.peerId });
-            mpShowToast(`${leftName} left the game`);
+            showToast(`${leftName} left the game`);
             if (mpIsActive) {
                 if (mpMode === 'race') {
                     mpCheckAllAcked();
@@ -459,6 +476,10 @@ function mpApplySettings(msg) {
     };
 
     if (msg.pluginId && (!activePlugin || activePlugin.id !== msg.pluginId)) {
+        if (msg.config) {
+            const customPlugin = new CSVQuizPlugin(msg.config);
+            Registry.registerPlugin(customPlugin);
+        }
         changePlugin(msg.pluginId).then(startRestOfGame);
     } else {
         startRestOfGame();
@@ -490,14 +511,28 @@ function mpStartGame() {
         playerData[pid] = { name: p.name, color: mpPlayerColors[pid] };
     });
 
-    broadcast({
+    const gameStartMsg = {
         type: 'game-start',
         pluginId: activePlugin.id,
         settings: activeSettings,
         mpMode,
         questionPool: mpQuestionPool,
         players: playerData,
-    });
+    };
+
+    // If it's a dynamic custom plugin, send config
+    if (activePlugin.id.startsWith('custom-csv-') && activePlugin instanceof CSVQuizPlugin) {
+        gameStartMsg.config = {
+            id: activePlugin.id,
+            name: activePlugin.name,
+            title: activePlugin.title,
+            subtitle: activePlugin.subtitle,
+            csvRaw: activePlugin.csvRaw,
+            mapping: activePlugin.mapping
+        };
+    }
+
+    broadcast(gameStartMsg);
 
     document.getElementById('mp-lobby-modal').style.display = 'none';
     document.getElementById('start-screen').style.display = 'none';
@@ -643,7 +678,7 @@ function mpHandleDisconnect(peerId) {
     delete mpRoundAnswered[peerId];
     delete mpRoundAcked[peerId];
     broadcast({ type: 'player-left', peerId });
-    mpShowToast(`${name} left the game`);
+    showToast(`${name} left the game`);
     if (mpIsActive) {
         if (mpMode === 'race') {
             mpCheckAllAcked();
@@ -665,7 +700,7 @@ function mpHandleDisconnect(peerId) {
 function mpGuestHandleHostDisconnect() {
     mpIsActive = false;
     canAnswer = false;
-    mpShowToast('Host disconnected. Returning home…');
+    showToast('Host disconnected. Returning home…');
     setTimeout(closeLobby, 2000);
 }
 
@@ -723,18 +758,4 @@ function copyRoomLink() {
         btn.textContent = 'Copied!';
         setTimeout(() => { btn.textContent = 'Copy Link'; }, 1500);
     });
-}
-
-function mpShowToast(text) {
-    let toast = document.getElementById('mp-toast');
-    if (!toast) {
-        toast = document.createElement('div');
-        toast.id = 'mp-toast';
-        toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e293b;border:1px solid #475569;color:#f8fafc;padding:8px 18px;border-radius:999px;font-size:0.8rem;z-index:500;opacity:0;transition:opacity 0.3s';
-        document.body.appendChild(toast);
-    }
-    toast.textContent = text;
-    toast.style.opacity = '1';
-    clearTimeout(toast._t);
-    toast._t = setTimeout(() => { toast.style.opacity = '0'; }, 2500);
 }

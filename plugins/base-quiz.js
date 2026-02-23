@@ -159,7 +159,9 @@ class BaseQuizPlugin {
   displayQuestion(item) {
     if (!item) return;
     const media = item.questionMedia || '';
-    const isUrl = (typeof media === 'string') && (media.startsWith('http') || media.includes('/') || media.includes('.'));
+    const isUrl = (typeof media === 'string') && 
+                 (media.startsWith('http') || media.startsWith('data:image/')) && 
+                 (!media.includes(' ') || media.match(/\.(jpeg|jpg|gif|png|webp|svg)/i));
 
     this.overlay.classList.add('hidden');
     
@@ -217,7 +219,9 @@ class BaseQuizPlugin {
                 const item = this.getItemById(id);
                 if (!item) return '';
                 
-                const isUrl = (typeof item.questionMedia === 'string') && (item.questionMedia.startsWith('http') || item.questionMedia.includes('/') || item.questionMedia.includes('.'));
+                const isUrl = (typeof item.questionMedia === 'string') && 
+                              (item.questionMedia.startsWith('http') || item.questionMedia.startsWith('data:image/')) && 
+                              (!item.questionMedia.includes(' ') || item.questionMedia.match(/\.(jpeg|jpg|gif|png|webp|svg)/i));
                 const content = isUrl 
                     ? `<img src="${item.thumbnailUrl || item.questionMedia}" class="max-w-full max-h-full rounded-sm shadow-sm pointer-events-none">`
                     : `<span class="text-[10px] font-bold text-white text-center line-clamp-2">${item.questionMedia}</span>`;

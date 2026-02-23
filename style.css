@@ -88,7 +88,7 @@ button {
     align-items: center;
     justify-content: center;
 }
-.settings-modal, .finish-modal, .scores-modal, .plugin-picker-modal {
+.settings-modal, .finish-modal, .scores-modal, .plugin-picker-modal, .custom-quiz-modal {
     display: none;
     position: fixed;
     inset: 0;
@@ -99,6 +99,9 @@ button {
 }
 .plugin-picker-modal {
     z-index: 500;
+}
+.custom-quiz-modal {
+    z-index: 600;
 }
 .scores-modal {
     z-index: 400;
