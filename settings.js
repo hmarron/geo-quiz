@@ -59,15 +59,14 @@ function applySettings(startNew = true) {
         activeSettings.showBorders = bordersCheckbox.checked;
     }
 
-    // Dynamic filter application
-    if (activeSettings.filters) {
-        for (const filterId in activeSettings.filters) {
-            const filterCheckbox = document.getElementById(`check-${filterId}`);
-            if (filterCheckbox) {
-                activeSettings.filters[filterId] = filterCheckbox.checked;
-            }
+    // Dynamic filter application: find all checkboxes starting with 'check-'
+    const checkboxes = document.querySelectorAll('input[type="checkbox"][id^="check-"]');
+    checkboxes.forEach(cb => {
+        const filterId = cb.id.replace('check-', '');
+        if (filterId !== 'borders') { // exclude special 'showBorders' check
+            activeSettings.filters[filterId] = cb.checked;
         }
-    }
+    });
 
     applyActiveSettings();
 
