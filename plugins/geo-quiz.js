@@ -231,6 +231,15 @@ class GeoQuizPlugin {
   }
 
   updateSettings(settings) {
+    const validIds = this.initialRegions.map(r => r.id);
+    const existingIds = Object.keys(settings.filters || {});
+    const isMismatch = existingIds.length > 0 && !existingIds.some(id => validIds.includes(id));
+
+    if (!settings.filters || existingIds.length === 0 || isMismatch) {
+        settings.filters = {};
+        this.initialRegions.forEach(r => settings.filters[r.id] = (r.id !== 'africa-south' && r.id !== 'oceania'));
+    }
+
     this.g.selectAll("path")
       .attr("class", d => this._isAllowed(d, settings) ? "quiz-item" : "quiz-item quiz-item-excluded")
       .style("stroke", settings.showBorders ? this.COLOR_BORDER : "none")

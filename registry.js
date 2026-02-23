@@ -12,6 +12,11 @@ const Registry = (() => {
             plugins.set(pluginInstance.id, pluginInstance);
             if (!activePluginId) activePluginId = pluginInstance.id;
             console.log(`Plugin registered: ${pluginInstance.name} (${pluginInstance.id})`);
+            
+            // Try to update UI if function exists
+            if (typeof renderPluginPicker === 'function') {
+                renderPluginPicker();
+            }
         },
 
         getPlugin(id) {
@@ -54,3 +59,20 @@ const Registry = (() => {
         }
     };
 })();
+
+// Register a sample CSV quiz after the Registry is defined
+if (typeof CSVQuizPlugin !== 'undefined') {
+    Registry.registerPlugin(new CSVQuizPlugin({
+        id: 'capitals-quiz',
+        name: 'European Capitals',
+        title: 'Capital Cities',
+        subtitle: 'Identify European capitals from the country name',
+        csvUrl: 'generic-quiz.csv',
+        mapping: {
+            id: 'id',
+            answer: 'answer',
+            questionMedia: 'questionMedia', // This is the country name (text)
+            categories: 'categories'
+        }
+    }));
+}

@@ -20,6 +20,14 @@
 
     <!-- Start Screen -->
     <div id="start-screen" class="start-screen">
+        <!-- Subtle plugin selector at the top -->
+        <div class="absolute top-6 w-full flex justify-center px-6">
+            <button onclick="togglePluginPicker()" class="flex items-center gap-2 px-4 py-2 bg-slate-800/40 hover:bg-slate-800/60 border border-slate-700/50 rounded-full text-xs font-bold text-slate-400 transition-all">
+                <span id="current-plugin-label">Geography Quiz</span>
+                <span class="opacity-50">▼</span>
+            </button>
+        </div>
+
         <div class="flex flex-col items-center gap-6 w-full max-w-xs px-6">
             <div class="text-6xl">🌍</div>
             <div class="text-center">
@@ -34,7 +42,26 @@
                     Multiplayer <span class="text-slate-400 font-normal text-sm">(Experimental)</span>
                 </button>
             </div>
+
             <button onclick="toggleScores()" class="text-sm text-slate-500 hover:text-slate-300 transition-colors">
+                High Scores
+            </button>
+            <button id="start-install-btn" onclick="installApp()" class="hidden text-xs text-slate-600 hover:text-slate-400 transition-colors">
+                + Install App
+            </button>
+        </div>
+    </div>
+
+    <!-- Plugin Picker Modal -->
+    <div id="plugin-picker-modal" class="plugin-picker-modal p-4">
+        <div class="bg-slate-800 border border-slate-700 w-full max-w-xs rounded-2xl p-6 shadow-2xl">
+            <h2 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 text-center">Select Quiz Type</h2>
+            <div id="plugin-picker" class="flex flex-col gap-2">
+                <!-- Dynamic plugin buttons -->
+            </div>
+            <button onclick="togglePluginPicker()" class="w-full mt-4 text-xs text-slate-500 hover:text-slate-300 transition-colors">Cancel</button>
+        </div>
+    </div>
                 High Scores
             </button>
             <button id="start-install-btn" onclick="installApp()" class="hidden text-xs text-slate-600 hover:text-slate-400 transition-colors">
@@ -252,9 +279,11 @@
 
     <script src="utils.js"></script>
     <script src="registry.js"></script>
-    <!-- <script src="plugins/geo-quiz.js"></script> -->
+    <script src="plugins/base-quiz.js"></script>
+    <script src="plugins/csv-quiz.js"></script>
+    <script src="plugins/geo-quiz.js"></script>
     <script src="plugins/flag-quiz.js"></script>
-    <!-- <script src="plugins/pictogram-quiz.js"></script> -->
+    <script src="plugins/pictogram-quiz.js"></script>
     <script src="settings.js"></script>
     <script src="scores.js"></script>
     <script src="quiz.js"></script>

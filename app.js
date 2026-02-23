@@ -16,6 +16,8 @@ async function init(andThen) {
     if (!activePlugin) activePlugin = Registry.getActivePlugin();
     if (!activeMode) activeMode = Registry.getMode('solo');
 
+    renderPluginPicker();
+
     // Update global UI with plugin metadata
     const titleEl = document.getElementById('app-title');
     const subtitleEl = document.getElementById('app-subtitle');
@@ -41,18 +43,14 @@ async function init(andThen) {
         activePlugin.renderQuizView(quizViewContainer);
         activePlugin.bindUIEvents();
 
-        renderSettings(); // Renders UI controls for settings
-        updateActiveLabel(); // Updates the "Xx countries active" label
-
-        // Generate the initial pool based on default settings
-        pool = activePlugin.generateQuestionPool(activeSettings);
-        document.getElementById('remaining').innerText = pool.length;
+        applyActiveSettings();
 
         answerInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') checkTypedAnswer();
         });
 
         dataReady = true;
+        dataLoading = false;
         document.getElementById('loader').style.display = 'none';
         if (andThen) andThen();
     } catch (err) {
@@ -132,10 +130,51 @@ function installApp() {
 setMode(activeSettings.gameMode); // From settings.js, sets 'easy' or 'hard'
 init(); // Start loading data in the background immediately
 
+function renderPluginPicker() {
+    const picker = document.getElementById('plugin-picker');
+    if (!picker) return;
+
+    const label = document.getElementById('current-plugin-label');
+    if (label && activePlugin) {
+        label.textContent = activePlugin.name;
+    }
+    
+    const plugins = Registry.getAllPlugins();
+    picker.innerHTML = plugins.map(p => `
+        <button onclick="selectPlugin('${p.id}')" 
+                class="flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${p.id === activePlugin?.id ? 'border-blue-500 bg-blue-500/10 text-white' : 'border-slate-700 bg-slate-800/50 text-slate-400 hover:border-slate-600'}">
+            <span class="text-xs font-bold leading-tight flex-1 text-left">${p.name}</span>
+            ${p.id === activePlugin?.id ? '<span class="text-blue-400 text-[10px]">●</span>' : ''}
+        </button>
+    `).join('');
+}
+
+function togglePluginPicker() {
+    const modal = document.getElementById('plugin-picker-modal');
+    if (!modal) return;
+    if (modal.style.display !== 'flex') {
+        renderPluginPicker();
+    }
+    modal.style.display = modal.style.display === 'flex' ? 'none' : 'flex';
+}
+
+function selectPlugin(id) {
+    if (activePlugin && activePlugin.id === id) return;
+    
+    changePlugin(id).then(() => {
+        togglePluginPicker();
+    });
+}
+
 function changePlugin(id) {
     Registry.setActivePlugin(id);
     activePlugin = Registry.getActivePlugin();
     dataReady = false; // Trigger reload
+    
+    // If we are a host in a lobby, tell others
+    if (typeof mpIsHost !== 'undefined' && mpIsHost && typeof broadcast === 'function') {
+        broadcast({ type: 'plugin-change', pluginId: id });
+    }
     
     // Clear the container
     const container = document.getElementById('quiz-view-container');

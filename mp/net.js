@@ -225,6 +225,7 @@ function handleMpMessage(msg, fromId) {
             try {
                 mpConns[fromId].send({
                     type: 'welcome',
+                    pluginId: activePlugin.id,
                     players: Object.fromEntries(
                         Object.entries(mpPlayers).map(([pid, p]) => [pid, { name: p.name, color: mpPlayerColors[pid] }])
                     )
@@ -240,7 +241,22 @@ function handleMpMessage(msg, fromId) {
                 mpPlayers[pid] = { name: p.name, score: 0, wrong: 0 };
                 if (p.color) mpPlayerColors[pid] = p.color;
             });
-            mpUpdateLobbyList();
+            if (msg.pluginId && (!activePlugin || activePlugin.id !== msg.pluginId)) {
+                changePlugin(msg.pluginId).then(() => {
+                    mpUpdateLobbyList();
+                });
+            } else {
+                mpUpdateLobbyList();
+            }
+            break;
+
+        case 'plugin-change':
+            if (msg.pluginId && (!activePlugin || activePlugin.id !== msg.pluginId)) {
+                changePlugin(msg.pluginId).then(() => {
+                    mpUpdateLobbyList();
+                    mpShowToast(`Host changed quiz to ${activePlugin.name}`);
+                });
+            }
             break;
 
         case 'player-joined':
@@ -666,8 +682,8 @@ function mpUpdateLobbyList() {
         </li>`;
     }).join('');
     
-    // Also update mode selector if we are host
-    if (mpIsHost) mpUpdateLobbyModes();
+    // Refresh mode selector or lobby UI
+    mpUpdateLobbyModes();
 }
 
 function mpUpdateLobbyModes() {

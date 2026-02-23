@@ -77,7 +77,7 @@ button {
     align-items: center;
     justify-content: center;
     background: #0f172a;
-    z-index: 100;
+    z-index: 1000;
 }
 .start-screen {
     display: flex;
@@ -88,7 +88,7 @@ button {
     align-items: center;
     justify-content: center;
 }
-.settings-modal, .finish-modal, .scores-modal {
+.settings-modal, .finish-modal, .scores-modal, .plugin-picker-modal {
     display: none;
     position: fixed;
     inset: 0;
@@ -96,6 +96,9 @@ button {
     z-index: 200;
     align-items: center;
     justify-content: center;
+}
+.plugin-picker-modal {
+    z-index: 500;
 }
 .scores-modal {
     z-index: 400;

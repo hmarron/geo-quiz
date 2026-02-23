@@ -1,19 +1,16 @@
 // plugins/pictogram-quiz.js
 
-class PictogramQuizPlugin {
+class PictogramQuizPlugin extends BaseQuizPlugin {
   constructor() {
+    super();
     this.id = 'pictogram-quiz';
     this.name = 'Spanish Pictogram Quiz';
     this.title = 'Vocabulario en Imágenes';
     this.subtitle = 'Identify Spanish words from pictograms';
     this.supportedModes = ['solo', 'race', 'compete', 'land-grab'];
 
-    this.fullDataset = [];
-    this.container = null;
-    this.imgEl = null;
-    this.overlay = null;
-    this.nameDisplay = null;
-    this.claims = {}; // { itemId: color }
+    this.uiConfig.imageBg = 'bg-white';
+    this.uiConfig.aspectRatio = 'aspect-square';
 
     // Maps internal IDs to ARASAAC categories
     this.filterGroups = [
@@ -25,10 +22,6 @@ class PictogramQuizPlugin {
     ];
   }
 
-  async loadScripts() {
-    return Promise.resolve();
-  }
-
   async loadData() {
     if (this.fullDataset.length > 0) return;
     
@@ -36,15 +29,15 @@ class PictogramQuizPlugin {
     const response = await fetch('https://api.arasaac.org/api/pictograms/all/es');
     const data = await response.json();
     
-    // Process and simplify the dataset
+    // Process and simplify the dataset into standard format
     this.fullDataset = data.map(item => ({
-        id: item._id,
-        name: item.keywords[0]?.keyword || '',
+        id: item._id.toString(),
+        answer: item.keywords[0]?.keyword || '',
+        questionMedia: `https://static.arasaac.org/pictograms/${item._id}/${item._id}_300.png`,
+        thumbnailUrl: `https://static.arasaac.org/pictograms/${item._id}/${item._id}_300.png`,
         categories: item.categories || [],
-        tags: item.tags || [],
-        imageUrl: `https://static.arasaac.org/pictograms/${item._id}/${item._id}_300.png`,
-        thumbnailUrl: `https://static.arasaac.org/pictograms/${item._id}/${item._id}_300.png`
-    })).filter(item => item.name && item.id);
+        tags: item.tags || []
+    })).filter(item => item.answer && item.id);
   }
 
   getSettingsView() {
@@ -108,143 +101,6 @@ class PictogramQuizPlugin {
     return pool;
   }
 
-  getItemId(item) {
-    return item.id.toString();
-  }
-
-  getItemById(id) {
-    return this.fullDataset.find(item => item.id.toString() === id.toString());
-  }
-
-  getCorrectAnswer(item) {
-    return item.name;
-  }
-
-  checkTypedAnswer(item, answer) {
-    const guess = this._normalizeString(answer);
-    if (guess.length < 2) return false;
-
-    const primary = this._normalizeString(this.getCorrectAnswer(item));
-    
-    if (guess === primary) return true;
-
-    // Levenshtein for minor typos
-    const distance = this._levenshteinDistance(guess, primary);
-    const threshold = primary.length < 5 ? 1 : 2;
-    return distance <= threshold;
-  }
-
-  generateChoices(correctItem, pool) {
-    const correctName = this.getCorrectAnswer(correctItem);
-    const options = [{ text: correctName, correct: true }];
-    const incorrectOptions = new Set();
-
-    // Use a wider selection for incorrect options if the pool is small
-    const allPossible = this.fullDataset.filter(i => i.name !== correctName);
-
-    while (incorrectOptions.size < 3 && incorrectOptions.size < allPossible.length) {
-        const randomItem = allPossible[Math.floor(Math.random() * allPossible.length)];
-        const randomName = this.getCorrectAnswer(randomItem);
-        if (randomName !== correctName) {
-            incorrectOptions.add(randomName);
-        }
-    }
-
-    incorrectOptions.forEach(name => {
-        options.push({ text: name, correct: false });
-    });
-
-    return options.sort(() => Math.random() - 0.5);
-  }
-
-  renderQuizView(container) {
-    this.container = container;
-    container.innerHTML = `
-      <div class="flex flex-col items-center justify-center h-full w-full p-4 gap-6 bg-slate-900/50">
-        <div id="pictogram-display-container" class="relative group">
-            <div id="pictogram-border" class="p-4 bg-white rounded-3xl shadow-2xl transition-all duration-300">
-                <img id="pictogram-img" class="max-w-full max-h-[45vh] rounded-lg" style="display:none;">
-            </div>
-            <div id="pictogram-overlay" class="absolute inset-0 flex items-center justify-center pointer-events-none z-10 hidden">
-                <div id="pictogram-name-display" class="text-3xl sm:text-4xl font-bold px-6 py-3 rounded-xl bg-black/80 backdrop-blur-sm border border-white/20 shadow-2xl text-white"></div>
-            </div>
-        </div>
-      </div>
-    `;
-
-    this.imgEl = document.getElementById('pictogram-img');
-    this.overlay = document.getElementById('pictogram-overlay');
-    this.nameDisplay = document.getElementById('pictogram-name-display');
-  }
-
-  bindUIEvents() {}
-
-  displayQuestion(item) {
-    if (!item || !this.imgEl) return;
-    this.imgEl.src = item.imageUrl;
-    this.imgEl.style.display = 'block';
-    this.overlay.classList.add('hidden');
-    document.getElementById('pictogram-border').style.backgroundColor = 'white';
-    document.getElementById('pictogram-border').className = 'p-4 bg-white rounded-3xl shadow-2xl transition-all duration-300';
-  }
-
-  updateViewOnAnswer(item, correct, color) {
-    const border = document.getElementById('pictogram-border');
-    if (border) {
-        border.style.backgroundColor = color || (correct ? '#dcfce7' : '#fee2e2'); // light green/red
-        border.classList.add(correct ? 'ring-8-green-500' : 'ring-8-red-500');
-    }
-    const name = this.getCorrectAnswer(item);
-    this.showOverlay(name, correct);
-  }
-
-  showOverlay(name, isCorrect) {
-    if (!this.overlay || !this.nameDisplay) return;
-    this.nameDisplay.textContent = name;
-    this.nameDisplay.className = `text-3xl sm:text-4xl font-bold px-6 py-3 rounded-xl bg-black/80 backdrop-blur-sm border shadow-2xl ${isCorrect ? 'text-green-400 border-green-500/50' : 'text-red-400 border-red-500/50'}`;
-    this.overlay.classList.remove('hidden');
-  }
-
-  colorItem(itemId, color) {
-    this.claims[itemId] = color;
-  }
-
-  renderResultView(container) {
-    if (!container) return;
-    const claimedIds = Object.keys(this.claims);
-    if (claimedIds.length === 0) return;
-
-    container.innerHTML = `
-        <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 text-center">Colección</h3>
-        <div class="grid grid-cols-4 sm:grid-cols-6 gap-2">
-            ${claimedIds.map(id => {
-                const color = this.claims[id];
-                const item = this.getItemById(id);
-                if (!item) return '';
-                return `
-                    <div class="aspect-square rounded-lg p-1 shadow-sm flex items-center justify-center bg-white border-2" 
-                         style="border-color: ${color}" title="${item.name}">
-                        <img src="${item.thumbnailUrl}" class="max-w-full max-h-full rounded-sm pointer-events-none object-contain">
-                    </div>
-                `;
-            }).join('')}
-        </div>
-    `;
-  }
-
-  clearHighlights() {}
-
-  resetView() {
-    this.claims = {};
-    if (this.imgEl) this.imgEl.style.display = 'none';
-    if (this.overlay) this.overlay.classList.add('hidden');
-    const border = document.getElementById('pictogram-border');
-    if (border) {
-        border.style.backgroundColor = 'white';
-        border.className = 'p-4 bg-white rounded-3xl shadow-2xl transition-all duration-300';
-    }
-  }
-
   getScoreSettingsDescription(settings) {
     const activeNames = this.filterGroups
         .filter(f => settings.filters[f.id])
@@ -265,25 +121,6 @@ class PictogramQuizPlugin {
         }
     }
     return false;
-  }
-
-  _normalizeString(str) {
-    if (!str) return '';
-    return str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[.']/g, '');
-  }
-
-  _levenshteinDistance(a, b) {
-    const m = a.length, n = b.length;
-    const dp = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
-    for (let i = 0; i <= m; i++) dp[i][0] = i;
-    for (let j = 0; j <= n; j++) dp[0][j] = j;
-    for (let i = 1; i <= m; i++) {
-        for (let j = 1; j <= n; j++) {
-            const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-            dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost);
-        }
-    }
-    return dp[m][n];
   }
 }
 
