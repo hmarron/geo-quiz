@@ -179,7 +179,7 @@ function sendToHost(msg) {
 
 // ─── Message router ───────────────────────────────────────────────────────────
 
-function handleMpMessage(msg, fromId) {
+async function handleMpMessage(msg, fromId) {
     switch (msg.type) {
         case 'ready':
             if (!mpIsHost) return;
@@ -364,7 +364,11 @@ function mpCheckAllAcked() {
 
 // ─── Game start / settings apply ─────────────────────────────────────────────
 
-function mpApplySettings(msg) {
+async function mpApplySettings(msg) {
+    if (msg.pluginId && (!activePlugin || activePlugin.id !== msg.pluginId)) {
+        await changePlugin(msg.pluginId);
+    }
+
     mpMode = msg.mpMode;
     mpQuestionPool = msg.questionPool;
     mpQuestionIdx = 0;

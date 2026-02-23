@@ -22,7 +22,10 @@ async function init(andThen) {
     if (titleEl) titleEl.textContent = activePlugin.title || activePlugin.name;
     if (subtitleEl) subtitleEl.textContent = activePlugin.subtitle || '';
 
-    if (dataReady) { if (andThen) andThen(); return; }
+    if (dataReady) { 
+        if (andThen) andThen(); 
+        return; 
+    }
     if (dataLoading) {
         const wait = setInterval(() => { if (dataReady) { clearInterval(wait); if (andThen) andThen(); } }, 100);
         return;
@@ -128,6 +131,19 @@ function installApp() {
 
 setMode(activeSettings.gameMode); // From settings.js, sets 'easy' or 'hard'
 init(); // Start loading data in the background immediately
+
+function changePlugin(id) {
+    Registry.setActivePlugin(id);
+    activePlugin = Registry.getActivePlugin();
+    dataReady = false; // Trigger reload
+    
+    // Clear the container
+    const container = document.getElementById('quiz-view-container');
+    if (container) container.innerHTML = '';
+    
+    // Re-init with new plugin
+    return init();
+}
 
 const _autoJoinCode = new URLSearchParams(window.location.search).get('join');
 if (_autoJoinCode) startMultiplayer(_autoJoinCode.toUpperCase());
