@@ -31,7 +31,7 @@ const MP_COLOR_PALETTE = [
     '#6366f1', // indigo
 ];
 
-const MP_PREFIX = 'geoquiz-';
+const MP_PREFIX = 'quizler-';
 
 function mpNextColor() {
     const used = Object.keys(mpPlayerColors).length;
@@ -215,7 +215,7 @@ function sendToHost(msg) {
 
 // ─── Message router ───────────────────────────────────────────────────────────
 
-async function handleMpMessage(msg, fromId) {
+function handleMpMessage(msg, fromId) {
     console.log(`[MP] Received message: ${msg.type} from ${fromId}`, msg);
     switch (msg.type) {
         case 'ready':
@@ -401,48 +401,52 @@ function mpCheckAllAcked() {
 
 // ─── Game start / settings apply ─────────────────────────────────────────────
 
-async function mpApplySettings(msg) {
+function mpApplySettings(msg) {
+    const startRestOfGame = () => {
+        mpMode = msg.mpMode;
+        mpQuestionPool = msg.questionPool;
+        mpQuestionIdx = 0;
+        activeMode = Registry.getMode(msg.mpMode);
+        
+        activeSettings.filters = msg.settings.filters;
+        activeSettings.showBorders = msg.settings.showBorders;
+        activeSettings.gameMode = msg.settings.gameMode;
+        
+        if (typeof activePlugin.updateSettings === 'function') {
+            activePlugin.updateSettings(activeSettings);
+        }
+        
+        pool = activePlugin.generateQuestionPool(activeSettings);
+        document.getElementById('remaining').innerText = pool.length;
+
+        if (msg.players) {
+            Object.entries(msg.players).forEach(([pid, p]) => {
+                const name = typeof p === 'object' ? p.name : p;
+                const color = typeof p === 'object' ? p.color : null;
+                mpPlayers[pid] = { name, score: 0, wrong: 0 };
+                if (color) mpPlayerColors[pid] = color;
+            });
+            if (msg.players[mpMyPeerId]?.color) mpPlayerColors[mpMyPeerId] = msg.players[mpMyPeerId].color;
+        }
+        document.getElementById('mp-lobby-modal').style.display = 'none';
+        document.getElementById('mp-finish-modal').style.display = 'none';
+        document.getElementById('mp-results-pill').classList.add('hidden');
+        document.getElementById('start-screen').style.display = 'none';
+        mpIsActive = true;
+        score = 0; wrongCount = 0; hintCount = 0;
+        startTime = null;
+        document.getElementById('score').innerText = 0;
+        document.getElementById('wrong-count').innerText = 0;
+        document.getElementById('timer').textContent = '0:00';
+        
+        activeMode.start();
+    };
+
     if (msg.pluginId && (!activePlugin || activePlugin.id !== msg.pluginId)) {
-        await changePlugin(msg.pluginId);
+        changePlugin(msg.pluginId).then(startRestOfGame);
+    } else {
+        startRestOfGame();
     }
-
-    mpMode = msg.mpMode;
-    mpQuestionPool = msg.questionPool;
-    mpQuestionIdx = 0;
-    activeMode = Registry.getMode(msg.mpMode);
-    
-    activeSettings.filters = msg.settings.filters;
-    activeSettings.showBorders = msg.settings.showBorders;
-    activeSettings.gameMode = msg.settings.gameMode;
-    
-    if (typeof activePlugin.updateSettings === 'function') {
-        activePlugin.updateSettings(activeSettings);
-    }
-    
-    pool = activePlugin.generateQuestionPool(activeSettings);
-    document.getElementById('remaining').innerText = pool.length;
-
-    if (msg.players) {
-        Object.entries(msg.players).forEach(([pid, p]) => {
-            const name = typeof p === 'object' ? p.name : p;
-            const color = typeof p === 'object' ? p.color : null;
-            mpPlayers[pid] = { name, score: 0, wrong: 0 };
-            if (color) mpPlayerColors[pid] = color;
-        });
-        if (msg.players[mpMyPeerId]?.color) mpPlayerColors[mpMyPeerId] = msg.players[mpMyPeerId].color;
-    }
-    document.getElementById('mp-lobby-modal').style.display = 'none';
-    document.getElementById('mp-finish-modal').style.display = 'none';
-    document.getElementById('mp-results-pill').classList.add('hidden');
-    document.getElementById('start-screen').style.display = 'none';
-    mpIsActive = true;
-    score = 0; wrongCount = 0; hintCount = 0;
-    startTime = null;
-    document.getElementById('score').innerText = 0;
-    document.getElementById('wrong-count').innerText = 0;
-    document.getElementById('timer').textContent = '0:00';
-    
-    activeMode.start();
 }
 
 function mpStartGame() {

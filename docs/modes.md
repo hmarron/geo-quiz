@@ -19,7 +19,7 @@ A game mode is a JavaScript object that should implement the following propertie
 - `onHome()`: Called when the user clicks the home button (⌂). Use this to stop timers and return to the start screen.
 
 ### Multiplayer Methods (Required if `isMultiplayer: true`)
-- `onMessage(msg, fromId)`: Handles incoming messages from the network (via `net.js`). You'll need to handle custom message types like `'go'`, `'round-over'`, or `'land-grab-next'`.
+- `onMessage(msg, fromId)`: Handles incoming messages from the network (via `net.js`). Standardize on using `itemId` for identifying quiz items.
 - `start()`: Called by `net.js` after the host starts the game. Use this to kick off the first round or question.
 
 ## 3. Register the Mode
@@ -41,14 +41,7 @@ if (typeof Registry !== 'undefined') {
 ```
 
 ## 4. Handle Multiplayer Integration (Optional)
-If your mode is multiplayer, you'll need to update the `handleMpMessage` router in `mp/net.js` to route any custom message types to your mode's `onMessage` handler.
-
-### `mp/net.js` example:
-```javascript
-case 'my-custom-message':
-    activeMode.onMessage(msg, fromId);
-    break;
-```
+If your mode is multiplayer, ensure the `handleMpMessage` router in `mp/net.js` routes your custom message types to your mode's `onMessage` handler. (Existing types like `'go'`, `'answered'`, `'round-over'` are already routed).
 
 ## 5. Include in `index.html`
 Add your script tag to `index.html` before `mp/net.js` and `app.js`:

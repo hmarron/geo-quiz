@@ -1,4 +1,4 @@
-# Quiz Engine
+# Quizler
 
 A lightweight, serverless, and extensible engine for building interactive quiz games. While it comes with Geography and Flag modules, the core architecture is designed to support any type of quiz content and multiple game mechanics.
 

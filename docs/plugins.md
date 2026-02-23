@@ -1,39 +1,45 @@
 # How to Add a New Quiz Plugin
 
-The Geo Quiz engine is built on a plugin-based architecture. You can add a new quiz type (e.g., "Flags", "Capitals", "Space") by implementing the `QuizPlugin` interface and registering it.
+The Quizler engine is built on a plugin-based architecture. You can add a new quiz type (e.g., "Flags", "Spanish Animals", "Music Trivia") by implementing the `QuizPlugin` interface and registering it.
 
 ## 1. Create Your Plugin File
-Create a new JS file in the `plugins/` directory, e.g., `plugins/flag-quiz.js`.
+Create a new JS file in the `plugins/` directory, e.g., `plugins/my-quiz.js`.
 
 ## 2. Implement the Plugin Interface
 A plugin is a class that must implement the following properties and methods:
 
 ### Metadata
 - `id`: A unique string ID (e.g., `'flag-quiz'`).
-- `name`: A human-readable name (e.g., `'Flag Quiz'`).
-- `supportedModes`: An array of mode IDs that this plugin supports (e.g., `['solo', 'race', 'compete']`).
+- `name`: A human-readable name for the registry (e.g., `'Flag Quiz'`).
+- `title`: The big title shown on the start screen (e.g., `'Flag Challenge'`).
+- `subtitle`: The subtitle shown on the start screen (e.g., `'Identify world flags'`).
+- `supportedModes`: An array of mode IDs that this plugin supports (e.g., `['solo', 'race', 'compete', 'land-grab']`).
 
 ### Initialization
-- `async loadScripts()`: Use this to load any external libraries (like D3 or Three.js). Should return a Promise.
-- `async loadData()`: Use this to fetch your GeoJSON, images, or JSON data.
+- `async loadScripts()`: Load external libraries (like D3). Should return a Promise.
+- `async loadData()`: Fetch your dataset (GeoJSON, JSON, etc.).
 
 ### Settings & Logic
-- `getSettingsView()`: Returns an HTML string for the settings modal.
-- `updateSettings(settings)`: Called when settings change. Use this to update your internal state or re-render your view.
-- `generateQuestionPool(settings)`: Should return an array of items (questions) filtered by the current settings.
+- `getSettingsView()`: Returns HTML for the main settings modal. Use `id="check-X"` for filter checkboxes.
+- `getLobbySettingsView()`: Returns HTML for the multiplayer lobby. Use `id="mp-check-X"` for filter checkboxes.
+- `updateSettings(settings)`: Called when settings change. `settings.filters` contains your active toggles.
+- `getScoreSettingsDescription(settings)`: Returns a short string (e.g., "Europe, Asia") describing the active filters for the high score list.
+- `generateQuestionPool(settings)`: Returns an array of items filtered by the current settings.
 - `getItemId(item)`: Returns a unique string ID for a given data item (e.g., an ISO code).
 - `getItemById(id)`: Returns the full data item object for a given ID.
 - `getCorrectAnswer(item)`: Returns the string value of the correct answer (shown in results/overlays).
-- `checkTypedAnswer(item, answer)`: Returns `true` if the typed answer is correct (for Hard Mode).
-- `generateChoices(correctItem, pool)`: Returns an array of `{ text, correct }` objects for Easy Mode.
+- `checkTypedAnswer(item, answer)`: Returns `true` if the typed answer is correct (Hard Mode).
+- `generateChoices(correctItem, pool)`: Returns an array of `{ text, correct }` objects (Easy Mode).
 
 ### View Rendering
 - `renderQuizView(container)`: Sets up the main UI in the `#quiz-view-container`.
-- `bindUIEvents()`: Use this to attach event listeners to any buttons or controls you rendered.
-- `displayQuestion(item)`: Highlights or shows the current target in the view.
-- `updateViewOnAnswer(item, correct, color)`: Provides visual feedback after an answer (e.g., coloring a country or showing a checkmark).
-- `colorItem(itemId, color)`: (Multiplayer) Colors a specific item (e.g., in Race or Land Grab mode).
-- `clearHighlights()`: Removes any temporary highlights (like the yellow "current target" highlight).
+- `bindUIEvents()`: Attach event listeners to your UI (e.g., zoom buttons).
+- `displayQuestion(item)`: Highlights or shows the current target in the view. Use CSS classes `.quiz-item` and `.quiz-item-highlight`.
+- `updateViewOnAnswer(item, correct, color)`: Visual feedback after an answer.
+- `colorItem(itemId, color)`: (Multiplayer) Colors a specific item (Race/Land Grab).
+- `renderResultView(container)`: (Optional) Renders a custom results summary (e.g., a flag grid) in the finish modal.
+- `renderResultActions(container)`: (Optional) Renders custom buttons (e.g., "View Map") in the finish modal.
+- `clearHighlights()`: Removes temporary highlights (like the yellow target highlight).
 - `resetView()`: Resets the entire view to its initial state.
 
 ## 3. Register the Plugin
@@ -49,5 +55,5 @@ if (typeof Registry !== 'undefined') {
 Add your script tag to `index.html` before `app.js`:
 
 ```html
-<script src="plugins/flag-quiz.js"></script>
+<script src="plugins/my-quiz.js"></script>
 ```
