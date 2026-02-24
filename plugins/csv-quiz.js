@@ -30,7 +30,23 @@ class CSVQuizPlugin extends BaseQuizPlugin {
     if (this.csvRaw) {
         text = this.csvRaw;
     } else if (this.csvUrl) {
-        const response = await fetch(this.csvUrl);
+        let response;
+        try {
+            response = await fetch(this.csvUrl);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        } catch (directErr) {
+            // Retry via CORS proxy for servers that don't set CORS headers
+            try {
+                const proxyUrl = `https://corsproxy.io/?url=${encodeURIComponent(this.csvUrl)}`;
+                response = await fetch(proxyUrl);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            } catch (proxyErr) {
+                throw new Error(
+                    `Could not load CSV (CORS blocked). ` +
+                    `Try hosting on GitHub Gist (raw URL) or another CORS-enabled host.`
+                );
+            }
+        }
         text = await response.text();
     } else {
         return;

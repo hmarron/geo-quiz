@@ -56,6 +56,7 @@ async function init(andThen) {
     } catch (err) {
         console.error("Error loading plugin or data:", err);
         dataLoading = false;
+        if (typeof showToast === 'function') showToast(err.message || 'Failed to load quiz data');
     }
 }
 
@@ -196,15 +197,17 @@ async function handleCsvUrlLoad() {
         }
     });
 
-    Registry.registerPlugin(customPlugin);
-    await changePlugin(customPlugin.id);
-    toggleCustomQuizModal();
-    togglePluginPicker();
-    
-    if (typeof showToast === 'function') {
-        showToast(`Loaded quiz from URL`);
+    try {
+        Registry.registerPlugin(customPlugin);
+        await changePlugin(customPlugin.id);
+        toggleCustomQuizModal();
+        togglePluginPicker();
+        if (typeof showToast === 'function') showToast(`Loaded quiz from URL`);
+        input.value = '';
+    } catch (e) {
+        console.error('Failed to load CSV from URL:', e);
+        if (typeof showToast === 'function') showToast(`Failed to load CSV: ${e.message}`);
     }
-    input.value = '';
 }
 
 async function handleCsvUpload(event) {
