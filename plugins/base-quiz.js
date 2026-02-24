@@ -18,6 +18,8 @@ class BaseQuizPlugin {
     this.container = null;
     this.imgEl = null;
     this.textEl = null;
+    this.loaderEl = null;
+    this.loaderTimeout = null;
     this.overlay = null;
     this.nameDisplay = null;
     this.claims = {}; // { itemId: color }
@@ -128,6 +130,11 @@ class BaseQuizPlugin {
     container.innerHTML = `
       <div class="flex flex-col items-center justify-center h-full w-full p-4 gap-6 bg-slate-900/50">
         <div id="quiz-display-container" class="relative group w-full flex items-center justify-center min-h-[40vh]">
+            <!-- Loading Indicator -->
+            <div id="quiz-loader" class="absolute inset-0 flex items-center justify-center z-20 hidden">
+                <span class="spinner"></span>
+            </div>
+
             <!-- Image Media -->
             <div id="quiz-media-border" class="${this.uiConfig.imagePadding} ${this.uiConfig.imageBg} ${this.uiConfig.imageRounded} shadow-2xl transition-all duration-300 hidden">
                 <img id="quiz-img" class="max-w-full max-h-[45vh] rounded-lg shadow-lg">
@@ -146,8 +153,20 @@ class BaseQuizPlugin {
 
     this.imgEl = document.getElementById('quiz-img');
     this.textEl = document.getElementById('quiz-text');
+    this.loaderEl = document.getElementById('quiz-loader');
     this.overlay = document.getElementById('quiz-overlay');
     this.nameDisplay = document.getElementById('quiz-name-display');
+
+    // Setup image load/error listeners once
+    this.imgEl.onload = () => {
+        if (this.loaderTimeout) clearTimeout(this.loaderTimeout);
+        if (this.loaderEl) this.loaderEl.classList.add('hidden');
+    };
+    this.imgEl.onerror = () => {
+        if (this.loaderTimeout) clearTimeout(this.loaderTimeout);
+        if (this.loaderEl) this.loaderEl.classList.add('hidden');
+        console.error("Failed to load image:", this.imgEl.src);
+    };
   }
 
   bindUIEvents() {}
@@ -167,12 +186,23 @@ class BaseQuizPlugin {
     
     const border = document.getElementById('quiz-media-border');
     if (isUrl) {
+        // Clear any previous timeout
+        if (this.loaderTimeout) clearTimeout(this.loaderTimeout);
+        
+        // Only show loader if it takes more than 300ms
+        this.loaderTimeout = setTimeout(() => {
+            if (this.loaderEl) this.loaderEl.classList.remove('hidden');
+        }, 300);
+
         this.imgEl.src = media;
+
         this.textEl.classList.add('hidden');
         border.classList.remove('hidden');
         border.style.backgroundColor = '';
         border.className = `${this.uiConfig.imagePadding} ${this.uiConfig.imageBg} ${this.uiConfig.imageRounded} shadow-2xl transition-all duration-300`;
     } else {
+        if (this.loaderTimeout) clearTimeout(this.loaderTimeout);
+        if (this.loaderEl) this.loaderEl.classList.add('hidden');
         this.textEl.textContent = media;
         this.textEl.style.color = '';
         this.textEl.classList.remove('hidden');
@@ -181,6 +211,8 @@ class BaseQuizPlugin {
   }
 
   updateViewOnAnswer(item, correct, color) {
+    if (this.loaderTimeout) clearTimeout(this.loaderTimeout);
+    if (this.loaderEl) this.loaderEl.classList.add('hidden');
     const border = document.getElementById('quiz-media-border');
     if (border && !border.classList.contains('hidden')) {
         border.style.backgroundColor = color || (correct ? '#16a34a' : '#dc2626');
@@ -241,8 +273,12 @@ class BaseQuizPlugin {
 
   resetView() {
     this.claims = {};
+    if (this.loaderTimeout) clearTimeout(this.loaderTimeout);
     if (this.textEl) this.textEl.style.color = '';
-    if (this.imgEl) this.imgEl.src = '';
+    if (this.imgEl) {
+        this.imgEl.src = '';
+    }
+    if (this.loaderEl) this.loaderEl.classList.add('hidden');
     if (this.overlay) this.overlay.classList.add('hidden');
     const border = document.getElementById('quiz-media-border');
     if (border) {
