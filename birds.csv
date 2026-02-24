@@ -1,51 +1,51 @@
 id,answer,questionMedia,categories
 bird-ostrich,Ostrich,https://media.hswstatic.com/eyJidWNrZXQiOiJjb250ZW50Lmhzd3N0YXRpYy5jb20iLCJrZXkiOiJnaWZcL29zdHJpY2guanBnIiwiZWRpdHMiOnsicmVzaXplIjp7IndpZHRoIjoyOTB9LCJ0b0Zvcm1hdCI6ImF2aWYifX0=,Common;Africa
 bird-emperor-penguin,Emperor Penguin,https://images.unsplash.com/photo-1517783999520-f068d7431a60?w=640,Common;Antarctica
-bird-albatross,Wandering Albatross,image missing,Common;Ocean
-bird-owl,Barn Owl,image missing,Common;Global
-bird-flamingo,Greater Flamingo,image missing,Common;Africa;Asia
-bird-swan,Mute Swan,image missing,Common;Global
-bird-robin,European Robin,image missing,Common;Europe
-bird-parrot,Sulphur-crested Cockatoo,image missing,Common;Australia
-bird-peregrine-falcon,Peregrine Falcon,image missing,Common;Global
-bird-sparrow,Tree Sparrow,image missing,Common;Global
-bird-turkey,Wild Turkey,image missing,Common;North America
-bird-eagle,Bald Eagle,image missing,Common;North America
-bird-peacock,Indian Peafowl,image missing,Common;Asia
-bird-toucan,Toco Toucan,image missing,Common;South America
-bird-kingfisher,Common Kingfisher,image missing,Common;Global
-bird-mallard,Mallard,image missing,Common;Global
-bird-cardinal,Northern Cardinal,image missing,Common;North America
-bird-blue-jay,Blue Jay,image missing,Common;North America
-bird-pelican,Brown Pelican,image missing,Common;Global
-bird-woodpecker,Downy Woodpecker,image missing,Common;North America
-bird-penguin-2,Gentoo Penguin,image missing,Common;Antarctica
-bird-hummingbird,Anna's Hummingbird,image missing,Common;North America
-bird-duck,Mandarin Duck,image missing,Common;Asia
-bird-pigeon,Rock Pigeon,image missing,Common;Global
-bird-heron,Grey Heron,image missing,Common;Global
-bird-raven,Common Raven,image missing,Common;Global
-bird-magpie,Eurasian Magpie,image missing,Common;Eurasia
-bird-starling,European Starling,image missing,Common;Global
-bird-goose,Canada Goose,image missing,Common;North America
-bird-vulture,Griffon Vulture,image missing,Common;Global
-bird-hawk,Red-tailed Hawk,image missing,Common;North America
-bird-kookaburra,Laughing Kookaburra,image missing,Common;Australia
-bird-emu-2,Emu,image missing,Common;Australia
-bird-macaw,Blue-and-yellow Macaw,image missing,Common;South America
-bird-canary,Domestic Canary,image missing,Common;Global
-bird-puffin,Atlantic Puffin,image missing,Common;Atlantic
-bird-seagull,Herring Gull,image missing,Common;Global
-bird-crow,American Crow,image missing,Common;North America
-bird-swallow,Barn Swallow,image missing,Common;Global
-bird-tit,Blue Tit,image missing,Common;Europe
-bird-blackbird,Common Blackbird,image missing,Common;Global
+bird-albatross,Wandering Albatross,https://cdn.oceanwide-expeditions.com/media-dynamic/cache/widen_1200_avif/v2-gallery_media/media60fe8a957ee90387849807.avif,Common;Ocean
+bird-owl,Barn Owl,https://base-prod.rspb-prod.magnolia-platform.com/.imaging/focalpoint/landscape16to9/_WIDTH_x_HEIGHT_/dam/jcr:2bf52d08-2eb9-4c24-b0d2-2e2c076bc48d/374227486-Species-Barn-owl-in-flight-before-attack-clean-background.jpg,Common;Global
+bird-flamingo,Greater Flamingo,https://langkawiwildlifepark.com.my/wp-content/uploads/2024/02/Greater-Flamingo-1024x724.jpg,Common;Africa;Asia
+bird-swan,Mute Swan,https://www.ulsterwildlife.org/sites/default/files/styles/spotlight_palm/public/2018-01/Bird%20-%20Swan%20Mute%20Gillian%20Day%20Slimbridge%20Oct%202010.jpg.webp?h=ecfed00c&itok=SNb310Pg,Common;Global
+bird-robin,European Robin,https://cdn.download.ams.birds.cornell.edu/api/v1/asset/44599871/1200,Common;Europe
+bird-parrot,Sulphur-crested Cockatoo,https://cdn.download.ams.birds.cornell.edu/api/v1/asset/622584393/1200,Common;Australia
+bird-peregrine-falcon,Peregrine Falcon,https://cdn.download.ams.birds.cornell.edu/api/v1/asset/303618951/1200,Common;Global
+bird-sparrow,Tree Sparrow,https://birdwatchireland.ie/app/uploads/2019/02/Tree-Sparrow-JF03-John-Fox-600x400.jpg,Common;Global
+bird-turkey,Wild Turkey,https://s7d1.scene7.com/is/image/isp/wabwildturkeymale?qlt=100&wid=1200&ts=1750689381626&$ImageComponent$&fit=constrain,Common;North America
+bird-eagle,Bald Eagle,https://cdn.britannica.com/92/152292-050-EAF28A45/Bald-eagle.jpg?w=400&h=300&c=crop,Common;North America
+bird-peacock,Indian Peafowl,https://www.zoonewengland.org/media/246405/peacockgallery5.jpg,Common;Asia
+bird-toucan,Toco Toucan,https://cdn.download.ams.birds.cornell.edu/api/v1/asset/96276931/1200,Common;South America
+bird-kingfisher,Common Kingfisher,https://cdn.download.ams.birds.cornell.edu/api/v1/asset/168729731/1200,Common;Global
+bird-mallard,Mallard,https://www.ulsterwildlife.org/sites/default/files/styles/spotlight_palm/public/2018-01/Mallard%20%C2%A9%20Mark%20Hamblin.jpg.webp?h=6993d9e8&itok=DGHcxWpF,Common;Global
+bird-cardinal,Northern Cardinal,https://cdn.download.ams.birds.cornell.edu/api/v1/asset/297087301/1200,Common;North America
+bird-blue-jay,Blue Jay,https://cdn.download.ams.birds.cornell.edu/api/v1/asset/311635911/1200,Common;North America
+bird-pelican,Brown Pelican,https://cdn.download.ams.birds.cornell.edu/api/v1/asset/304463771/1200,Common;Global
+bird-woodpecker,Downy Woodpecker,https://cdn.download.ams.birds.cornell.edu/api/v1/asset/60397941/1200,Common;North America
+bird-penguin-2,Gentoo Penguin,https://cdn.download.ams.birds.cornell.edu/api/v1/asset/612764627/1200,Common;Antarctica
+bird-hummingbird,Anna's Hummingbird,https://cdn.download.ams.birds.cornell.edu/api/v1/asset/303891031/1200,Common;North America
+bird-duck,Mandarin Duck,https://cdn.download.ams.birds.cornell.edu/api/v1/asset/241982721/1200,Common;Asia
+bird-pigeon,Rock Pigeon,https://cdn.download.ams.birds.cornell.edu/api/v1/asset/308065631/1200,Common;Global
+bird-heron,Grey Heron,https://cdn.download.ams.birds.cornell.edu/api/v1/asset/254741801/1200,Common;Global
+bird-raven,Common Raven,https://cdn.download.ams.birds.cornell.edu/api/v1/asset/300152741/1200,Common;Global
+bird-magpie,Eurasian Magpie,https://cdn.download.ams.birds.cornell.edu/api/v1/asset/610797531/1200,Common;Eurasia
+bird-starling,European Starling,https://cdn.download.ams.birds.cornell.edu/api/v1/asset/303928891/1200,Common;Global
+bird-goose,Canada Goose,https://cdn.download.ams.birds.cornell.edu/api/v1/asset/59953191/1200,Common;North America
+bird-vulture,Griffon Vulture,https://cdn.download.ams.birds.cornell.edu/api/v1/asset/254918961/1200,Common;Global
+bird-hawk,Red-tailed Hawk,https://cdn.download.ams.birds.cornell.edu/api/v1/asset/319806651/1200,Common;North America
+bird-kookaburra,Laughing Kookaburra,https://cdn.download.ams.birds.cornell.edu/api/v1/asset/121681201/1200,Common;Australia
+bird-emu-2,Emu,https://cdn.download.ams.birds.cornell.edu/api/v1/asset/621872552/1200,Common;Australia
+bird-macaw,Blue-and-yellow Macaw,https://cdn.download.ams.birds.cornell.edu/api/v1/asset/58162541/1200,Common;South America
+bird-canary,Domestic Canary,https://cdn.download.ams.birds.cornell.edu/api/v1/asset/97692831/1200/900,Common;Global
+bird-puffin,Atlantic Puffin,https://cdn.download.ams.birds.cornell.edu/api/v1/asset/302851271/1200,Common;Atlantic
+bird-seagull,Herring Gull,https://cdn.download.ams.birds.cornell.edu/api/v1/asset/623287377/1200,Common;Global
+bird-crow,American Crow,https://cdn.download.ams.birds.cornell.edu/api/v1/asset/59858041/1200,Common;North America
+bird-swallow,Barn Swallow,https://cdn.download.ams.birds.cornell.edu/api/v1/asset/312652671/1200,Common;Global
+bird-tit,Blue Tit,https://cdn.download.ams.birds.cornell.edu/api/v1/asset/46409481/1200,Common;Europe
+bird-blackbird,Common Blackbird,https://cdn.download.ams.birds.cornell.edu/api/v1/asset/44584641/1200,Common;Global
 bird-chicken,Domestic Chicken,https://images.unsplash.com/photo-1548550023-2bdb3c5beed7?w=640,Common;Global
-bird-hoopoe-2,Hoopoe,image missing,Common;Global
-bird-crane,Grey Crowned Crane,image missing,Common;Africa
-bird-falcon,Gyrfalcon,image missing,Common;Arctic
-bird-osprey-2,Osprey,image missing,Common;Global
-bird-goldfinch,European Goldfinch,image missing,Common;Europe
-bird-stork,Marabou Stork,image missing,Common;Africa
-bird-wren,Eurasian Wren,image missing,Common;Europe
-bird-jay,Eurasian Jay,image missing,Common;Europe
+bird-hoopoe-2,Hoopoe,https://cdn.download.ams.birds.cornell.edu/api/v1/asset/255121291/1200,Common;Global
+bird-crane,Grey Crowned Crane,https://cdn.download.ams.birds.cornell.edu/api/v1/asset/221249011/1200,Common;Africa
+bird-falcon,Gyrfalcon,https://cdn.download.ams.birds.cornell.edu/api/v1/asset/170735401/1200,Common;Arctic
+bird-osprey-2,Osprey,https://cdn.download.ams.birds.cornell.edu/api/v1/asset/60320581/1200,Common;Global
+bird-goldfinch,European Goldfinch,https://cdn.download.ams.birds.cornell.edu/api/v1/asset/256707351/1200,Common;Europe
+bird-stork,Marabou Stork,https://cdn.download.ams.birds.cornell.edu/api/v1/asset/218883401/1200,Common;Africa
+bird-wren,Eurasian Wren,https://cdn.download.ams.birds.cornell.edu/api/v1/asset/613695620/1200,Common;Europe
+bird-jay,Eurasian Jay,https://cdn.download.ams.birds.cornell.edu/api/v1/asset/252252921/1200,Common;Europe
