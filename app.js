@@ -248,6 +248,53 @@ async function handleCsvUpload(event) {
     event.target.value = '';
 }
 
+async function handleCsvPaste() {
+    let csvRaw;
+    try {
+        csvRaw = await navigator.clipboard.readText();
+    } catch (e) {
+        if (typeof showToast === 'function') showToast('Clipboard access denied');
+        return;
+    }
+
+    if (!csvRaw || !csvRaw.trim()) {
+        if (typeof showToast === 'function') showToast('Clipboard is empty');
+        return;
+    }
+
+    // Validate: need a header row and at least one data row
+    const lines = csvRaw.split(/\r?\n/).map(l => l.trim()).filter(l => l);
+    if (lines.length < 2) {
+        if (typeof showToast === 'function') showToast('CSV must have a header row and at least one data row');
+        return;
+    }
+    const headers = lines[0].split(',').map(h => h.trim());
+    if (!headers.includes('answer') || !headers.includes('questionMedia')) {
+        if (typeof showToast === 'function') showToast('CSV must have "answer" and "questionMedia" columns');
+        return;
+    }
+
+    const customPlugin = new CSVQuizPlugin({
+        id: 'custom-csv-' + Date.now(),
+        name: 'Pasted Quiz',
+        title: 'Pasted Quiz',
+        subtitle: 'Quiz from clipboard',
+        csvRaw: csvRaw,
+        mapping: {
+            id: 'id',
+            answer: 'answer',
+            questionMedia: 'questionMedia',
+            categories: 'categories'
+        }
+    });
+
+    Registry.registerPlugin(customPlugin);
+    await changePlugin(customPlugin.id);
+    toggleCustomQuizModal();
+    togglePluginPicker();
+    if (typeof showToast === 'function') showToast('Loaded quiz from clipboard');
+}
+
 function changePlugin(id) {
     Registry.setActivePlugin(id);
     activePlugin = Registry.getActivePlugin();

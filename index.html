@@ -96,6 +96,16 @@
             </button>
             <input type="file" id="csv-upload-input" accept=".csv" class="hidden" onchange="handleCsvUpload(event)">
 
+            <div class="relative flex items-center justify-center py-2 my-2">
+                <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-slate-700"></div></div>
+                <span class="relative px-3 bg-slate-800 text-[10px] font-bold text-slate-500 uppercase">OR</span>
+            </div>
+
+            <!-- Paste Option -->
+            <button onclick="handleCsvPaste()" class="w-full flex items-center justify-center gap-2 p-4 rounded-xl bg-slate-700/50 border border-slate-600 hover:bg-slate-700 hover:border-slate-500 transition-all">
+                <span class="text-sm font-bold text-slate-200">Paste CSV</span>
+            </button>
+
             <button onclick="toggleCustomQuizModal()" class="w-full mt-6 text-xs text-slate-500 hover:text-slate-300 transition-colors">Back</button>
         </div>
     </div>
