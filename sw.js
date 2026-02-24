@@ -1,4 +1,4 @@
-const CACHE = 'geo-quiz-v3';
+const CACHE = 'geo-quiz-v4';
 
 const GEOJSON_URL = 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_countries.geojson';
 
