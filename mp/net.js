@@ -47,10 +47,31 @@ function startMultiplayer(autoJoinCode) {
     init(() => {
         mpRenderLobbySettings();
         document.getElementById('mp-lobby-modal').style.display = 'flex';
+        
+        // Restore player name
+        const savedName = localStorage.getItem('mp_player_name') || '';
+        const nameInput = document.getElementById('mp-name-input');
+        if (nameInput) nameInput.value = savedName;
+
+        // Render recent rooms list
+        mpRenderRecentRooms();
+
         if (autoJoinCode) {
             document.getElementById('mp-join-input').classList.remove('hidden');
             document.getElementById('mp-code-input').value = autoJoinCode;
-            document.getElementById('mp-name-input').focus();
+
+            // Clean up the URL query parameters so page refresh doesn't trigger join again
+            if (window.history.replaceState) {
+                const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+                window.history.replaceState({ path: newUrl }, '', newUrl);
+            }
+
+            if (savedName) {
+                // Auto connect if player name is saved
+                joinRoom();
+            } else {
+                if (nameInput) nameInput.focus();
+            }
         }
     });
 }
@@ -62,10 +83,18 @@ function showJoinInput() {
 
 function createRoom() {
     mpLocalName = document.getElementById('mp-name-input').value.trim() || 'Player';
+    localStorage.setItem('mp_player_name', mpLocalName);
     document.getElementById('btn-create-room').disabled = true;
     document.getElementById('btn-join-room').disabled = true;
     document.getElementById('mp-name-input').disabled = true;
-    const code = mpGenCode();
+    
+    // Retrieve or generate persistent room code
+    let code = localStorage.getItem('mp_host_room_code');
+    if (!code) {
+        code = mpGenCode();
+        localStorage.setItem('mp_host_room_code', code);
+    }
+    
     mpIsHost = true;
     console.log(`[MP] Creating room with code: ${code}`);
     mpPeer = new Peer(MP_PREFIX + code, { debug: 3 });
@@ -73,7 +102,10 @@ function createRoom() {
     mpPeer.on('error', (err) => {
         console.error('[MP] PeerJS error:', err.type, err);
         if (err.type === 'unavailable-id') {
-            console.warn('[MP] ID unavailable, retrying...');
+            console.warn('[MP] ID unavailable, generating a new room code and retrying...');
+            const newCode = mpGenCode();
+            localStorage.setItem('mp_host_room_code', newCode);
+            
             mpPeer.destroy();
             mpPeer = null;
             mpIsHost = false;
@@ -91,7 +123,14 @@ function createRoom() {
         mpPlayerColors[id] = mpNextColor();
         mpPlayers[id] = { name: mpLocalName, score: 0, wrong: 0 };
         document.getElementById('mp-code-display').classList.remove('hidden');
-        document.getElementById('mp-room-code').textContent = id.replace(MP_PREFIX, '');
+        
+        const code = id.replace(MP_PREFIX, '');
+        document.getElementById('mp-room-code').textContent = code;
+        
+        // Generate QR code for this room
+        const url = window.location.origin + window.location.pathname + '?join=' + code;
+        generateRoomQR(url);
+
         document.getElementById('mp-status').classList.remove('hidden');
         document.getElementById('mp-host-controls').classList.remove('hidden');
         mpUpdateLobbyList();
@@ -122,6 +161,7 @@ function onGuestJoined(conn) {
 
 function joinRoom() {
     mpLocalName = document.getElementById('mp-name-input').value.trim() || 'Player';
+    localStorage.setItem('mp_player_name', mpLocalName);
     const code = document.getElementById('mp-code-input').value.trim().toUpperCase();
     if (code.length < 4) return;
 
@@ -258,6 +298,15 @@ function handleMpMessage(msg, fromId) {
                 mpPlayers[pid] = { name: p.name, score: 0, wrong: 0 };
                 if (p.color) mpPlayerColors[pid] = p.color;
             });
+
+            // Save to recent rooms list
+            const hostId = Object.keys(mpConns)[0];
+            if (hostId) {
+                const hostName = msg.players[hostId]?.name || 'Host';
+                const roomCode = hostId.replace(MP_PREFIX, '');
+                mpSaveRecentRoom(roomCode, hostName);
+            }
+
             if (msg.pluginId && (!activePlugin || activePlugin.id !== msg.pluginId)) {
                 changePlugin(msg.pluginId).then(() => {
                     mpUpdateLobbyList();
@@ -663,6 +712,15 @@ function closeLobby() {
     const connectBtn = document.querySelector('#mp-join-input button');
     if (connectBtn) { connectBtn.textContent = 'Connect'; connectBtn.disabled = false; }
     document.getElementById('mp-code-input').value = '';
+    
+    // Reset QR display state
+    const qrContainer = document.getElementById('mp-qr-container');
+    if (qrContainer) qrContainer.classList.add('hidden');
+    const toggleBtn = document.getElementById('btn-toggle-qr');
+    if (toggleBtn) toggleBtn.textContent = 'Show QR Code';
+    const qrDiv = document.getElementById('mp-qrcode');
+    if (qrDiv) qrDiv.innerHTML = '';
+
     document.getElementById('start-screen').style.display = 'flex';
     if (typeof activePlugin.updateSettings === 'function') {
         activePlugin.updateSettings(activeSettings);
@@ -766,19 +824,160 @@ function copyRoomCode() {
     });
 }
 
-function copyRoomLink() {
+function shareRoomLink() {
     const code = document.getElementById('mp-room-code').textContent;
     const url = window.location.origin + window.location.pathname + '?join=' + code;
+    
+    if (navigator.share) {
+        navigator.share({
+            title: 'Geography Challenge Quiz',
+            text: `Join my geography challenge quiz game! Room code: ${code}`,
+            url: url
+        }).catch(err => {
+            console.error('Error sharing room link:', err);
+            // Fallback to clipboard if share was cancelled or failed
+            copyRoomLinkToClipboard(url);
+        });
+    } else {
+        copyRoomLinkToClipboard(url);
+    }
+}
+
+function copyRoomLinkToClipboard(url) {
     if (!navigator.clipboard || !navigator.clipboard.writeText) {
         showToast('Clipboard copy not supported in this browser/context');
         return;
     }
     navigator.clipboard.writeText(url).then(() => {
-        const btn = document.getElementById('btn-copy-link');
-        btn.textContent = 'Copied!';
-        setTimeout(() => { btn.textContent = 'Copy Link'; }, 1500);
+        showToast('Room link copied to clipboard!');
+        const btn = document.getElementById('btn-share-link');
+        if (btn) {
+            btn.textContent = 'Copied Link!';
+            setTimeout(() => { btn.textContent = 'Share Link'; }, 1500);
+        }
     }).catch(err => {
         console.error('Failed to copy room link:', err);
         showToast('Failed to copy room link');
     });
+}
+
+let mpQrCodeInstance = null;
+
+function generateRoomQR(url) {
+    const qrDiv = document.getElementById('mp-qrcode');
+    if (!qrDiv) return;
+    
+    // Clear any previous QR code
+    qrDiv.innerHTML = '';
+    
+    if (typeof QRCode === 'undefined') {
+        console.warn('QRCode library not loaded yet');
+        qrDiv.textContent = 'Failed to load QR code generator';
+        return;
+    }
+    
+    try {
+        mpQrCodeInstance = new QRCode(qrDiv, {
+            text: url,
+            width: 140,
+            height: 140,
+            colorDark : "#0f172a", // Slate-900 for dark color
+            colorLight : "#ffffff",
+            correctLevel : QRCode.CorrectLevel.M
+        });
+    } catch (err) {
+        console.error('Failed to generate QR Code:', err);
+        qrDiv.textContent = 'Error generating QR Code';
+    }
+}
+
+function toggleRoomQR() {
+    const container = document.getElementById('mp-qr-container');
+    const toggleBtn = document.getElementById('btn-toggle-qr');
+    if (!container || !toggleBtn) return;
+    
+    if (container.classList.contains('hidden')) {
+        container.classList.remove('hidden');
+        toggleBtn.textContent = 'Hide QR Code';
+        
+        // Ensure QR is generated
+        const code = document.getElementById('mp-room-code').textContent;
+        const url = window.location.origin + window.location.pathname + '?join=' + code;
+        generateRoomQR(url);
+    } else {
+        container.classList.add('hidden');
+        toggleBtn.textContent = 'Show QR Code';
+    }
+}
+
+function mpSaveRecentRoom(code, hostName) {
+    let recents = [];
+    try {
+        recents = JSON.parse(localStorage.getItem('mp_recent_rooms') || '[]');
+    } catch(e) {}
+    
+    // Filter out if this room code already exists
+    recents = recents.filter(r => r.code !== code);
+    
+    // Add to start of list
+    recents.unshift({
+        code: code,
+        hostName: hostName,
+        timestamp: Date.now()
+    });
+    
+    // Keep top 5
+    recents = recents.slice(0, 5);
+    
+    localStorage.setItem('mp_recent_rooms', JSON.stringify(recents));
+    mpRenderRecentRooms();
+}
+
+function mpRenderRecentRooms() {
+    const container = document.getElementById('mp-recent-rooms-container');
+    const list = document.getElementById('mp-recent-rooms-list');
+    if (!container || !list) return;
+    
+    let recents = [];
+    try {
+        recents = JSON.parse(localStorage.getItem('mp_recent_rooms') || '[]');
+    } catch(e) {}
+    
+    if (recents.length === 0) {
+        container.classList.add('hidden');
+        return;
+    }
+    
+    container.classList.remove('hidden');
+    list.innerHTML = recents.map(room => {
+        return `
+            <button onclick="mpSelectRecentRoom('${room.code}')" class="flex items-center justify-between w-full bg-slate-900/60 hover:bg-slate-900 border border-slate-700/60 hover:border-blue-500/50 px-3 py-2 rounded-lg text-left transition-all group">
+                <div class="flex flex-col">
+                    <span class="text-xs font-bold text-slate-200 group-hover:text-blue-400 transition-colors">${escapeHtml(room.hostName)}'s Room</span>
+                    <span class="text-[10px] text-slate-400 font-mono tracking-wider">${room.code}</span>
+                </div>
+                <div class="text-[10px] text-slate-500 group-hover:text-blue-400 transition-colors font-bold flex items-center gap-1">
+                    Quick Join →
+                </div>
+            </button>
+        `;
+    }).join('');
+}
+
+function mpSelectRecentRoom(code) {
+    const codeInput = document.getElementById('mp-code-input');
+    if (codeInput) {
+        codeInput.value = code;
+        joinRoom();
+    }
+}
+
+function clearRecentRooms() {
+    localStorage.removeItem('mp_recent_rooms');
+    mpRenderRecentRooms();
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }

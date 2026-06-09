@@ -1,4 +1,4 @@
-const CACHE = 'geo-quiz-v5';
+const CACHE = 'geo-quiz-v6';
 
 const GEOJSON_URL = 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_countries.geojson';
 
@@ -6,6 +6,7 @@ const CDN_URLS = [
     'https://d3js.org/d3.v7.min.js',
     'https://cdn.tailwindcss.com',
     'https://unpkg.com/peerjs@1/dist/peerjs.min.js',
+    'https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js',
 ];
 
 self.addEventListener('install', () => self.skipWaiting());

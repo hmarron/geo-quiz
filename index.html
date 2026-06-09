@@ -14,6 +14,7 @@
     <!-- D3.js is now loaded by the plugin -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/peerjs@1/dist/peerjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="flex flex-col items-center p-2 sm:p-4">
@@ -208,10 +209,18 @@
             <!-- Room code display (host) -->
             <div id="mp-code-display" class="hidden mb-4">
                 <p class="text-xs text-slate-400 mb-1">Room code — share with friends:</p>
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 mb-3">
                     <span id="mp-room-code" class="mp-code flex-1 text-center"></span>
                     <button onclick="copyRoomCode()" id="btn-copy-code" class="text-xs bg-slate-700 hover:bg-slate-600 px-3 py-2 rounded-lg text-slate-300 transition-colors whitespace-nowrap">Copy</button>
-                    <button onclick="copyRoomLink()" id="btn-copy-link" class="text-xs bg-slate-700 hover:bg-slate-600 px-3 py-2 rounded-lg text-slate-300 transition-colors whitespace-nowrap">Copy Link</button>
+                    <button onclick="shareRoomLink()" id="btn-share-link" class="text-xs bg-slate-700 hover:bg-slate-600 px-3 py-2 rounded-lg text-slate-300 transition-colors whitespace-nowrap">Share Link</button>
+                </div>
+                <!-- Toggleable QR Code Container -->
+                <div id="mp-qr-container" class="hidden bg-white p-3 rounded-xl flex flex-col items-center justify-center mb-3 shadow-inner">
+                    <div id="mp-qrcode" class="w-[140px] h-[140px]"></div>
+                    <p class="text-[10px] text-slate-500 mt-1.5 font-semibold">Scan with phone camera to join</p>
+                </div>
+                <div class="text-center">
+                    <button onclick="toggleRoomQR()" id="btn-toggle-qr" class="text-xs text-blue-400 hover:text-blue-300 transition-colors underline focus:outline-none">Show QR Code</button>
                 </div>
             </div>
 
@@ -225,6 +234,15 @@
                     <button onclick="joinRoom()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-lg text-sm font-bold transition-colors">Connect</button>
                 </div>
                 <p id="mp-join-error" class="hidden text-xs text-red-400 mt-1"></p>
+
+                <!-- Recent Rooms (Quick Join) -->
+                <div id="mp-recent-rooms-container" class="hidden border-t border-slate-700/50 pt-3 mt-3">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <span class="text-xs text-slate-400 font-bold">Recent Rooms</span>
+                        <button onclick="clearRecentRooms()" class="text-[10px] text-slate-500 hover:text-slate-300 transition-colors">Clear</button>
+                    </div>
+                    <div id="mp-recent-rooms-list" class="flex flex-col gap-1.5"></div>
+                </div>
             </div>
 
             <!-- Status / player list -->
