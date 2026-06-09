@@ -25,19 +25,6 @@ class BirdQuizPlugin extends CSVQuizPlugin {
     this.uiConfig.aspectRatio = 'aspect-square';
     this.uiConfig.imagePadding = 'p-1';
   }
-
-  async loadData() {
-    if (this.fullDataset.length > 0) return;
-    
-    try {
-        const response = await fetch('birds.csv');
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const text = await response.text();
-        this._parseCsv(text);
-    } catch (err) {
-        console.error('Failed to load birds.csv:', err);
-    }
-  }
 }
 
 if (typeof Registry !== 'undefined') {

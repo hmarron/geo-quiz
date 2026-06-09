@@ -34,6 +34,7 @@ button {
     background: #1e293b;
     border: 1px solid #475569;
     transition: all 0.2s ease;
+    cursor: pointer;
 }
 .btn-option:hover {
     background: #334155;

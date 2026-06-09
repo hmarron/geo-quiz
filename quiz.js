@@ -53,7 +53,7 @@ function generateAndDisplayChoices() {
     optionsGrid.innerHTML = '';
     choices.forEach(choice => {
         const btn = document.createElement('button');
-        btn.className = "btn-option p-3 rounded-xl font-semibold text-sm shadow-lg text-white";
+        btn.className = "btn-option w-full p-3 rounded-xl font-semibold text-sm shadow-lg text-white";
         btn.innerText = choice.text;
         btn.onclick = () => {
             if (!canAnswer) return;

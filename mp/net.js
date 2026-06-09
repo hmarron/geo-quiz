@@ -271,7 +271,7 @@ function handleMpMessage(msg, fromId) {
             if (msg.pluginId && (!activePlugin || activePlugin.id !== msg.pluginId)) {
                 changePlugin(msg.pluginId).then(() => {
                     mpUpdateLobbyList();
-                    mpShowToast(`Host changed quiz to ${activePlugin.name}`);
+                    showToast(`Host changed quiz to ${activePlugin.name}`);
                 });
             }
             break;
@@ -682,6 +682,15 @@ function mpHandleDisconnect(peerId) {
     if (mpIsActive) {
         if (mpMode === 'race') {
             mpCheckAllAcked();
+            if (Object.keys(mpFinalAck).length > 0) {
+                const allAcked = Object.keys(mpPlayers).every(pid => mpFinalAck[pid]);
+                if (allAcked) mpAdvance();
+            }
+        } else if (mpMode === 'land-grab') {
+            if (Object.keys(mpFinalAck).length > 0) {
+                const allAcked = Object.keys(mpPlayers).every(pid => mpFinalAck[pid]);
+                if (allAcked) LandGrabMode.endGame();
+            }
         } else if (mpMode === 'compete') {
             if (mpCompeteFinished[peerId]) delete mpCompeteFinished[peerId];
             const allDone = Object.keys(mpPlayers).every(pid => mpCompeteFinished[pid]);
@@ -743,19 +752,33 @@ function mpSetStatus(text) {
 
 function copyRoomCode() {
     const code = document.getElementById('mp-room-code').textContent;
+    if (!navigator.clipboard || !navigator.clipboard.writeText) {
+        showToast('Clipboard copy not supported in this browser/context');
+        return;
+    }
     navigator.clipboard.writeText(code).then(() => {
         const btn = document.getElementById('btn-copy-code');
         btn.textContent = 'Copied!';
         setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+    }).catch(err => {
+        console.error('Failed to copy room code:', err);
+        showToast('Failed to copy room code');
     });
 }
 
 function copyRoomLink() {
     const code = document.getElementById('mp-room-code').textContent;
     const url = window.location.origin + window.location.pathname + '?join=' + code;
+    if (!navigator.clipboard || !navigator.clipboard.writeText) {
+        showToast('Clipboard copy not supported in this browser/context');
+        return;
+    }
     navigator.clipboard.writeText(url).then(() => {
         const btn = document.getElementById('btn-copy-link');
         btn.textContent = 'Copied!';
         setTimeout(() => { btn.textContent = 'Copy Link'; }, 1500);
+    }).catch(err => {
+        console.error('Failed to copy room link:', err);
+        showToast('Failed to copy room link');
     });
 }

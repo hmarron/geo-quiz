@@ -134,15 +134,15 @@ class CSVQuizPlugin extends BaseQuizPlugin {
 
   updateSettings(settings) {
     if (!this.availableCategories) return;
-
-    // Check if the current filters match the categories available in this CSV
-    const existingIds = Object.keys(settings.filters || {});
-    const isMismatch = existingIds.length > 0 && !existingIds.some(id => this.availableCategories.includes(id));
-
-    if (!settings.filters || existingIds.length === 0 || isMismatch) {
-        settings.filters = {};
-        this.availableCategories.forEach(cat => settings.filters[cat] = true);
-    }
+    const oldFilters = settings.filters || {};
+    settings.filters = {};
+    this.availableCategories.forEach(cat => {
+        if (cat in oldFilters) {
+            settings.filters[cat] = !!oldFilters[cat];
+        } else {
+            settings.filters[cat] = true;
+        }
+    });
   }
 
   getScoreSettingsDescription(settings) {

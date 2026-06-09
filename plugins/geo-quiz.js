@@ -107,11 +107,11 @@ class GeoQuizPlugin {
   }
 
   getItemId(item) {
-    return item.properties.ISO_A3;
+    return item.properties.ADM0_A3;
   }
 
   getItemById(id) {
-    return this.fullDataset.find(f => f.properties.ISO_A3 === id);
+    return this.fullDataset.find(f => f.properties.ADM0_A3 === id);
   }
 
   getCorrectAnswer(item) {
@@ -232,13 +232,15 @@ class GeoQuizPlugin {
 
   updateSettings(settings) {
     const validIds = this.initialRegions.map(r => r.id);
-    const existingIds = Object.keys(settings.filters || {});
-    const isMismatch = existingIds.length > 0 && !existingIds.some(id => validIds.includes(id));
-
-    if (!settings.filters || existingIds.length === 0 || isMismatch) {
-        settings.filters = {};
-        this.initialRegions.forEach(r => settings.filters[r.id] = (r.id !== 'africa-south' && r.id !== 'oceania'));
-    }
+    const oldFilters = settings.filters || {};
+    settings.filters = {};
+    this.initialRegions.forEach(r => {
+        if (r.id in oldFilters) {
+            settings.filters[r.id] = !!oldFilters[r.id];
+        } else {
+            settings.filters[r.id] = (r.id !== 'africa-south' && r.id !== 'oceania');
+        }
+    });
 
     this.g.selectAll("path")
       .attr("class", d => this._isAllowed(d, settings) ? "quiz-item" : "quiz-item quiz-item-excluded")
@@ -251,18 +253,83 @@ class GeoQuizPlugin {
     this.g.selectAll(".quiz-item").classed("quiz-item-highlight", d => d === item);
 
     try {
-        const bounds = this.path.bounds(item);
+        const getPolygons = (feature) => {
+            const geom = feature.geometry;
+            if (!geom) return [];
+            if (geom.type === 'Polygon') {
+                return [{ type: 'Polygon', coordinates: geom.coordinates }];
+            } else if (geom.type === 'MultiPolygon') {
+                return geom.coordinates.map(coords => ({ type: 'Polygon', coordinates: coords }));
+            }
+            return [];
+        };
+
+        const polygons = getPolygons(item);
+        if (polygons.length === 0) {
+            // Fallback to default bounds behavior
+            const bounds = this.path.bounds(item);
+            if (bounds && !isNaN(bounds[0][0])) {
+                const dx = bounds[1][0] - bounds[0][0];
+                const dy = bounds[1][1] - bounds[0][1];
+                const x = (bounds[0][0] + bounds[1][0]) / 2;
+                const y = (bounds[0][1] + bounds[1][1]) / 2;
+                const maxDim = Math.max(dx / this.width, dy / this.height, 0.001);
+                const scale = Math.max(1.8, Math.min(35, 0.42 / maxDim));
+                const translate = [this.width / 2 - scale * x, this.height / 2 - scale * y];
+                this.svg.transition().duration(500).call(this.zoom.transform, d3.zoomIdentity.translate(translate[0], translate[1]).scale(scale));
+            }
+            return;
+        }
+
+        // Sort polygons by spherical area descending
+        const polyAreas = polygons.map(poly => ({ poly, area: d3.geoArea(poly) }));
+        polyAreas.sort((a, b) => b.area - a.area);
+
+        const largestPoly = polyAreas[0].poly;
+
+        // Keep polygons that are at least 5% of the area of the largest polygon
+        const areaThreshold = polyAreas[0].area * 0.05;
+        const keptPolygons = polyAreas.filter(p => p.area >= areaThreshold).map(p => p.poly);
+
+        // Combined geometry bounds for kept large polygons
+        const tempGeometry = {
+            type: 'GeometryCollection',
+            geometries: keptPolygons
+        };
+        let bounds = this.path.bounds(tempGeometry);
+
         if (bounds && !isNaN(bounds[0][0])) {
-            const dx = bounds[1][0] - bounds[0][0];
-            const dy = bounds[1][1] - bounds[0][1];
+            let dx = bounds[1][0] - bounds[0][0];
+            let dy = bounds[1][1] - bounds[0][1];
+            let maxDim = Math.max(dx / this.width, dy / this.height, 0.001);
+            let scale = 0.42 / maxDim;
+
+            // Calculate bounds and scale for only the largest polygon (mainland)
+            const largestBounds = this.path.bounds(largestPoly);
+            const l_dx = largestBounds[1][0] - largestBounds[0][0];
+            const l_dy = largestBounds[1][1] - largestBounds[0][1];
+            const l_maxDim = Math.max(l_dx / this.width, l_dy / this.height, 0.001);
+            const l_scale = 0.42 / l_maxDim;
+
+            // If combined zoom forces the camera out too far (less than half the mainland's zoom level),
+            // or if it spans across the globe, fall back to zoom strictly on the largest polygon (mainland).
+            if (scale < 0.5 * l_scale) {
+                bounds = largestBounds;
+                dx = l_dx;
+                dy = l_dy;
+                maxDim = l_maxDim;
+                scale = l_scale;
+            }
+
             const x = (bounds[0][0] + bounds[1][0]) / 2;
             const y = (bounds[0][1] + bounds[1][1]) / 2;
-            const maxDim = Math.max(dx / this.width, dy / this.height, 0.001);
-            const scale = Math.max(1.8, Math.min(35, 0.42 / maxDim));
-            const translate = [this.width / 2 - scale * x, this.height / 2 - scale * y];
-            this.svg.transition().duration(500).call(this.zoom.transform, d3.zoomIdentity.translate(translate[0], translate[1]).scale(scale));
+            const finalScale = Math.max(1.8, Math.min(35, scale));
+            const translate = [this.width / 2 - finalScale * x, this.height / 2 - finalScale * y];
+            this.svg.transition().duration(500).call(this.zoom.transform, d3.zoomIdentity.translate(translate[0], translate[1]).scale(finalScale));
         }
-    } catch (e) {}
+    } catch (e) {
+        console.error("Smart zoom calculation failed:", e);
+    }
   }
 
   updateViewOnAnswer(item, correct, mpPlayerColor) {
@@ -317,8 +384,8 @@ class GeoQuizPlugin {
   }
 
   clearHighlights() {
-    this.g.selectAll(".country")
-        .classed("country-highlight", false);
+    this.g.selectAll(".quiz-item")
+        .classed("quiz-item-highlight", false);
   }
 
   // Map specific helpers
@@ -358,6 +425,7 @@ class GeoQuizPlugin {
         props.ADMIN,
         props.BRK_A3,
         props.ISO_A3,
+        props.ADM0_A3,
         props.ABBREV,
         props.POSTAL,
         ...Object.values(props.NAME_SORT || {}),

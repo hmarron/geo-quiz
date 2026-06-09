@@ -250,6 +250,10 @@ async function handleCsvUpload(event) {
 
 async function handleCsvPaste() {
     let csvRaw;
+    if (!navigator.clipboard || !navigator.clipboard.readText) {
+        if (typeof showToast === 'function') showToast('Clipboard reading not supported in this browser/context');
+        return;
+    }
     try {
         csvRaw = await navigator.clipboard.readText();
     } catch (e) {

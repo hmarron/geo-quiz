@@ -87,15 +87,16 @@ class FlagQuizPlugin extends BaseQuizPlugin {
   }
 
   updateSettings(settings) {
-    // Ensure at least one region is selected if no valid ones are found
     const validIds = this.regions.map(r => r.id);
-    const existingIds = Object.keys(settings.filters || {});
-    const isMismatch = existingIds.length > 0 && !existingIds.some(id => validIds.includes(id));
-
-    if (!settings.filters || existingIds.length === 0 || isMismatch) {
-        settings.filters = {};
-        this.regions.forEach(r => settings.filters[r.id] = true);
-    }
+    const oldFilters = settings.filters || {};
+    settings.filters = {};
+    this.regions.forEach(r => {
+        if (r.id in oldFilters) {
+            settings.filters[r.id] = !!oldFilters[r.id];
+        } else {
+            settings.filters[r.id] = true;
+        }
+    });
   }
 
   getScoreSettingsDescription(settings) {

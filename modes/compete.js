@@ -22,7 +22,13 @@ const CompeteMode = {
 
         // In Compete mode, the host just acts as a scoreboard relay.
         // The client is responsible for its own progress.
-        sendToHost({ type: 'score-update', score, wrong: wrongCount });
+        if (mpIsHost) {
+            mpPlayers[mpMyPeerId].score = score;
+            mpPlayers[mpMyPeerId].wrong = wrongCount;
+            broadcast({ type: 'player-score', peerId: mpMyPeerId, score, wrong: wrongCount });
+        } else {
+            sendToHost({ type: 'score-update', score, wrong: wrongCount });
+        }
 
         // Advance to the next question locally
         setTimeout(() => this.next(), 700);
@@ -46,8 +52,12 @@ const CompeteMode = {
         inputArea.classList.add('hidden');
         optionsGrid.classList.add('hidden');
         // Do not reset the view, so the player can see their answers.
-        sendToHost({ type: 'finished-compete' });
-        mpShowToast('You finished! Waiting for other players...');
+        if (mpIsHost) {
+            CompeteMode.onMessage({ type: 'finished-compete' }, mpMyPeerId);
+        } else {
+            sendToHost({ type: 'finished-compete' });
+        }
+        showToast('You finished! Waiting for other players...');
     },
 
     onReset() {
